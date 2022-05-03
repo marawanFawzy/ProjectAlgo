@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Drawing.Imaging;
 using NetTopologySuite.Utilities;
+using System.Linq;
 ///Algorithms Project
 ///Intelligent Scissors
 ///
@@ -146,13 +147,42 @@ namespace ImageQuantization
                         color Sum = new color(Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue);
                         D[Sum.value] = new PriorityQueue<edge>();
                         clusterd[Sum.value] = new ClusterFinder();
+                        DColor[Sum.value] = Sum;
+                        DVisited[Sum.value] = false;
                     }
                     p += nOffset;
                 }
                 original_bm.UnlockBits(bmd);
             }
-            Console.WriteLine(D.Keys.Count);
-            foreach (var i in D.Keys) Console.WriteLine(i);
+            foreach (var k in D.Keys)
+            {
+                foreach (var h in D.Keys)
+                {
+                    if (k != h)
+                    {
+                        edge tempEdge = new edge(
+                            Math.Sqrt(
+                                (DColor[h].red - DColor[k].red) * (DColor[h].red - DColor[k].red) +
+                                (DColor[h].green - DColor[k].green) * (DColor[h].green - DColor[k].green) +
+                                (DColor[h].blue - DColor[k].blue) * (DColor[h].blue - DColor[k].blue)
+                                )
+                            , h
+                            , k);
+                        D[h].Add(tempEdge);
+                    }
+                }
+            }
+            Console.WriteLine(D.Count + " Distinct colors ");
+            foreach (var i in D.Keys)
+            {
+                Console.WriteLine(i);
+                while (D[i].Count() != 0)
+                {
+                    Console.WriteLine(D[i].Peek().distance);
+                    D[i].Poll();
+                }
+                Console.WriteLine();
+            }
             return Buffer;
         }
 
