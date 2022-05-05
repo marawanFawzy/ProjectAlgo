@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using System.Drawing.Imaging;
 using NetTopologySuite.Utilities;
 using System.Linq;
+using System.Collections;
 ///Algorithms Project
 ///Intelligent Scissors
 ///
@@ -64,6 +65,11 @@ namespace ImageQuantization
         public bool clusterd = false;
         public int cluster = -1;
     }
+    public class TreeFinder
+    {
+        public bool added = false;
+        public int Tree = -1;
+    }
     /// <summary>
     /// Holds the pixel color in 3 byte values: red, green and blue
     /// </summary>
@@ -78,11 +84,6 @@ namespace ImageQuantization
     /// </summary>
     public class ImageOperations
     {
-        Dictionary<string, PriorityQueue<edge>> D = new Dictionary<string, PriorityQueue<edge>>();
-        Dictionary<string, color> DColor = new Dictionary<string, color>();
-        Dictionary<string, bool> DVisited = new Dictionary<string, bool>();
-        Dictionary<string, ClusterFinder> clusterd = new Dictionary<string, ClusterFinder>();
-        Dictionary<int, List<string>> clusters = new Dictionary<int, List<string>>();
         /// <summary>
         /// Open an image and load it into 2D array of colors (size: Height x Width)
         /// </summary>
@@ -90,16 +91,17 @@ namespace ImageQuantization
         /// <returns>2D array of colors</returns>
         public static RGBPixel[,] OpenImage(string ImagePath)
         {
+            PriorityQueue<edge> edges = new PriorityQueue<edge>();
+            PriorityQueue<edge> MST = new PriorityQueue<edge>();
+            Dictionary<string, color> DColor = new Dictionary<string, color>();
+            Dictionary<string, TreeFinder> AddedToTree = new Dictionary<string, TreeFinder>();
+            Dictionary<int, SortedSet<string>> Tree = new Dictionary<int, SortedSet<string>>();
+            List<string> k = new List<string>();
             Bitmap original_bm = new Bitmap(ImagePath);
             int Height = original_bm.Height;
             int Width = original_bm.Width;
 
             RGBPixel[,] Buffer = new RGBPixel[Height, Width];
-            Dictionary<string, PriorityQueue<edge>> D = new Dictionary<string, PriorityQueue<edge>>();
-            Dictionary<string, color> DColor = new Dictionary<string, color>();
-            Dictionary<string, bool> DVisited = new Dictionary<string, bool>();
-            Dictionary<string, ClusterFinder> clusterd = new Dictionary<string, ClusterFinder>();
-            Dictionary<int, List<string>> clusters = new Dictionary<int, List<string>>();
 
             unsafe
             {
@@ -129,6 +131,7 @@ namespace ImageQuantization
                 byte* p = (byte*)bmd.Scan0;
                 for (y = 0; y < Height; y++)
                 {
+
                     for (x = 0; x < Width; x++)
                     {
                         if (Format8)
@@ -145,44 +148,85 @@ namespace ImageQuantization
                             else if (Format32) p += 4;
                         }
                         color Sum = new color(Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue);
-                        D[Sum.value] = new PriorityQueue<edge>();
-                        clusterd[Sum.value] = new ClusterFinder();
                         DColor[Sum.value] = Sum;
-                        DVisited[Sum.value] = false;
+                        AddedToTree[Sum.value] = new TreeFinder();
                     }
+
                     p += nOffset;
                 }
                 original_bm.UnlockBits(bmd);
             }
-            foreach (var k in D.Keys)
+            k.AddRange(DColor.Keys);
+            int loop = DColor.Keys.Count;
+            for (int i = 0; i < loop; i++)
             {
-                foreach (var h in D.Keys)
+                color tempcolor = DColor[k[i]];
+                for (int j = 0; j < i; j++)
                 {
-                    if (k != h)
-                    {
-                        edge tempEdge = new edge(
+                    color tempcolorj = DColor[k[j]];
+                    edges.Add(new edge(
                             Math.Sqrt(
-                                (DColor[h].red - DColor[k].red) * (DColor[h].red - DColor[k].red) +
-                                (DColor[h].green - DColor[k].green) * (DColor[h].green - DColor[k].green) +
-                                (DColor[h].blue - DColor[k].blue) * (DColor[h].blue - DColor[k].blue)
+                                 Math.Pow(tempcolorj.red - tempcolor.red, 2) +
+                                 Math.Pow(tempcolorj.green - tempcolor.green, 2) +
+                                 Math.Pow(tempcolorj.blue - tempcolor.blue, 2)
                                 )
-                            , h
-                            , k);
-                        D[h].Add(tempEdge);
-                    }
+                            , k[j]
+                            , k[i]));
                 }
             }
-            Console.WriteLine(D.Count + " Distinct colors ");
-            foreach (var i in D.Keys)
+            Console.WriteLine(DColor.Count + " Distinct colors ");
+            double sum = 0, count = edges.Count();
+            int TreeNum = 0;
+            for (int i = 0; i < count; i++)
             {
-                Console.WriteLine(i);
-                while (D[i].Count() != 0)
+                edge Temp = edges.Peek();
+                if (AddedToTree[Temp.points[0]].added && AddedToTree[Temp.points[1]].added && AddedToTree[Temp.points[0]].Tree != AddedToTree[Temp.points[1]].Tree)
                 {
-                    Console.WriteLine(D[i].Peek().distance);
-                    D[i].Poll();
+                    int keep = AddedToTree[Temp.points[1]].Tree;
+                    foreach (var j in Tree[AddedToTree[Temp.points[1]].Tree])
+                    {
+                        AddedToTree[j].Tree = AddedToTree[Temp.points[0]].Tree;
+                    }
+                    Tree[AddedToTree[Temp.points[0]].Tree].UnionWith(Tree[keep]);
+                    Tree.Remove(keep);
                 }
-                Console.WriteLine();
+                else if (AddedToTree[Temp.points[0]].added && AddedToTree[Temp.points[1]].added && (AddedToTree[Temp.points[0]].Tree == AddedToTree[Temp.points[1]].Tree))
+                {
+                    edges.Poll();
+                    continue;
+                }
+                else if (AddedToTree[Temp.points[0]].added)
+                {
+                    AddedToTree[Temp.points[1]].added = true;
+                    AddedToTree[Temp.points[1]].Tree = AddedToTree[Temp.points[0]].Tree;
+                    Tree[AddedToTree[Temp.points[0]].Tree].Add(Temp.points[1]);
+
+                }
+                else if (AddedToTree[Temp.points[1]].added)
+                {
+                    AddedToTree[Temp.points[0]].added = true;
+                    AddedToTree[Temp.points[0]].Tree = AddedToTree[Temp.points[1]].Tree;
+                    Tree[AddedToTree[Temp.points[1]].Tree].Add(Temp.points[0]);
+
+                }
+                else
+                {
+                    Tree[TreeNum] = new SortedSet<string>();
+                    AddedToTree[Temp.points[0]].added = true;
+                    AddedToTree[Temp.points[1]].added = true;
+                    AddedToTree[Temp.points[0]].Tree = TreeNum;
+                    AddedToTree[Temp.points[1]].Tree = TreeNum;
+                    Tree[TreeNum].Add(Temp.points[0]);
+                    Tree[TreeNum].Add(Temp.points[1]);
+                    TreeNum++;
+                }
+                MST.Add(Temp);
+                sum = sum + Temp.distance;
+                edges.Poll();
+                if (MST.Count() == loop - 1) break;
             }
+            Console.WriteLine(sum + "MST SUM");
+            Console.WriteLine("-------------------------------------------------------------");
             return Buffer;
         }
 
