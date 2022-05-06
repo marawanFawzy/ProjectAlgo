@@ -33,9 +33,8 @@ namespace ImageQuantization
 
         private void btnGaussSmooth_Click(object sender, EventArgs e)
         {
-            double sigma = double.Parse(txtGaussSigma.Text);
             int maskSize = (int)nudMaskSize.Value;
-            ImageMatrix = ImageOperations.GaussianFilter1D(ImageMatrix, maskSize, sigma);
+            //ImageMatrix = ImageOperations.GaussianFilter1D(ImageMatrix, maskSize, 1);
             ImageOperations.DisplayImage(ImageMatrix, pictureBox2);
         }
 

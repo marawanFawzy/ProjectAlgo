@@ -35,13 +35,11 @@
             this.label2 = new System.Windows.Forms.Label();
             this.btnGaussSmooth = new System.Windows.Forms.Button();
             this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
             this.txtHeight = new System.Windows.Forms.TextBox();
             this.nudMaskSize = new System.Windows.Forms.NumericUpDown();
             this.txtWidth = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
-            this.txtGaussSigma = new System.Windows.Forms.TextBox();
             this.panel1 = new System.Windows.Forms.Panel();
             this.panel2 = new System.Windows.Forms.Panel();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
@@ -101,12 +99,12 @@
             // 
             this.label2.AutoSize = true;
             this.label2.Font = new System.Drawing.Font("Tahoma", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label2.Location = new System.Drawing.Point(807, 484);
+            this.label2.Location = new System.Drawing.Point(867, 484);
             this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(184, 24);
+            this.label2.Size = new System.Drawing.Size(179, 24);
             this.label2.TabIndex = 4;
-            this.label2.Text = "Smoothed Image";
+            this.label2.Text = "quantized image";
             this.label2.Click += new System.EventHandler(this.label2_Click);
             // 
             // btnGaussSmooth
@@ -115,9 +113,9 @@
             this.btnGaussSmooth.Location = new System.Drawing.Point(628, 526);
             this.btnGaussSmooth.Margin = new System.Windows.Forms.Padding(4);
             this.btnGaussSmooth.Name = "btnGaussSmooth";
-            this.btnGaussSmooth.Size = new System.Drawing.Size(109, 76);
+            this.btnGaussSmooth.Size = new System.Drawing.Size(152, 76);
             this.btnGaussSmooth.TabIndex = 5;
-            this.btnGaussSmooth.Text = "Gauss Smooth";
+            this.btnGaussSmooth.Text = "quantize";
             this.btnGaussSmooth.UseVisualStyleBackColor = true;
             this.btnGaussSmooth.Click += new System.EventHandler(this.btnGaussSmooth_Click);
             // 
@@ -125,25 +123,13 @@
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Tahoma", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(788, 529);
+            this.label3.Location = new System.Drawing.Point(848, 529);
             this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(94, 21);
+            this.label3.Size = new System.Drawing.Size(77, 21);
             this.label3.TabIndex = 7;
-            this.label3.Text = "Mask Size";
+            this.label3.Text = "clusters";
             this.label3.Click += new System.EventHandler(this.label3_Click);
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Font = new System.Drawing.Font("Tahoma", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label4.Location = new System.Drawing.Point(788, 577);
-            this.label4.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(120, 21);
-            this.label4.TabIndex = 9;
-            this.label4.Text = "Gauss Sigma";
-            this.label4.Click += new System.EventHandler(this.label4_Click);
             // 
             // txtHeight
             // 
@@ -160,19 +146,19 @@
             // 
             this.nudMaskSize.Font = new System.Drawing.Font("Tahoma", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.nudMaskSize.Increment = new decimal(new int[] {
-            2,
+            1,
             0,
             0,
             0});
-            this.nudMaskSize.Location = new System.Drawing.Point(913, 527);
+            this.nudMaskSize.Location = new System.Drawing.Point(973, 527);
             this.nudMaskSize.Margin = new System.Windows.Forms.Padding(4);
             this.nudMaskSize.Maximum = new decimal(new int[] {
-            99,
+            26000,
             0,
             0,
             0});
             this.nudMaskSize.Minimum = new decimal(new int[] {
-            3,
+            2,
             0,
             0,
             0});
@@ -180,7 +166,7 @@
             this.nudMaskSize.Size = new System.Drawing.Size(76, 27);
             this.nudMaskSize.TabIndex = 10;
             this.nudMaskSize.Value = new decimal(new int[] {
-            3,
+            2,
             0,
             0,
             0});
@@ -221,17 +207,6 @@
             this.label6.Text = "Height";
             this.label6.Click += new System.EventHandler(this.label6_Click);
             // 
-            // txtGaussSigma
-            // 
-            this.txtGaussSigma.Font = new System.Drawing.Font("Tahoma", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtGaussSigma.Location = new System.Drawing.Point(913, 574);
-            this.txtGaussSigma.Margin = new System.Windows.Forms.Padding(4);
-            this.txtGaussSigma.Name = "txtGaussSigma";
-            this.txtGaussSigma.Size = new System.Drawing.Size(75, 27);
-            this.txtGaussSigma.TabIndex = 14;
-            this.txtGaussSigma.Text = "1";
-            this.txtGaussSigma.TextChanged += new System.EventHandler(this.txtGaussSigma_TextChanged);
-            // 
             // panel1
             // 
             this.panel1.AutoScroll = true;
@@ -264,12 +239,10 @@
             this.ClientSize = new System.Drawing.Size(1205, 615);
             this.Controls.Add(this.panel2);
             this.Controls.Add(this.panel1);
-            this.Controls.Add(this.txtGaussSigma);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.txtWidth);
             this.Controls.Add(this.nudMaskSize);
-            this.Controls.Add(this.label4);
             this.Controls.Add(this.txtHeight);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.btnGaussSmooth);
@@ -300,13 +273,11 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Button btnGaussSmooth;
         private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label4;
         private System.Windows.Forms.TextBox txtHeight;
         private System.Windows.Forms.NumericUpDown nudMaskSize;
         private System.Windows.Forms.TextBox txtWidth;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.TextBox txtGaussSigma;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Panel panel2;
     }
