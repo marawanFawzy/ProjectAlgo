@@ -16,8 +16,8 @@ namespace ImageQuantization
     public class edge : IComparable<edge>
     {
         public double distance;
-        public string[] points = new string[2];
-        public edge(double distance, string point1, string point2)
+        public int[] points = new int[2];
+        public edge(double distance, int point1, int point2)
         {
             this.distance = distance;
             this.points[0] = point1;
@@ -42,18 +42,9 @@ namespace ImageQuantization
     }
     public class color
     {
-        public string value;
         public double red, green, blue;
-        private color sum;
-
-        public color(color sum)
-        {
-            this.sum = sum;
-        }
-
         public color(double red, double green, double blue)
         {
-            value = ((int)red * 65536 + (int)green * 256 + (int)blue).ToString("X");
             this.red = red;
             this.green = green;
             this.blue = blue;
@@ -93,16 +84,14 @@ namespace ImageQuantization
         {
             PriorityQueue<edge> edges = new PriorityQueue<edge>();
             PriorityQueue<edge> MST = new PriorityQueue<edge>();
-            Dictionary<string, color> DColor = new Dictionary<string, color>();
-            Dictionary<string, TreeFinder> AddedToTree = new Dictionary<string, TreeFinder>();
-            Dictionary<int, SortedSet<string>> Tree = new Dictionary<int, SortedSet<string>>();
-            List<string> k = new List<string>();
+            HashSet<RGBPixel> DColor = new HashSet<RGBPixel>();
+            List<RGBPixel> k = new List<RGBPixel>();
+            int[] Ksim;
             Bitmap original_bm = new Bitmap(ImagePath);
             int Height = original_bm.Height;
             int Width = original_bm.Width;
-
             RGBPixel[,] Buffer = new RGBPixel[Height, Width];
-
+            RGBPixel Sum = new RGBPixel();
             unsafe
             {
                 BitmapData bmd = original_bm.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.ReadWrite, original_bm.PixelFormat);
@@ -111,7 +100,6 @@ namespace ImageQuantization
                 bool Format32 = false;
                 bool Format24 = false;
                 bool Format8 = false;
-
                 if (original_bm.PixelFormat == PixelFormat.Format24bppRgb)
                 {
                     Format24 = true;
@@ -147,83 +135,78 @@ namespace ImageQuantization
                             if (Format24) p += 3;
                             else if (Format32) p += 4;
                         }
-                        color Sum = new color(Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue);
-                        DColor[Sum.value] = Sum;
-                        AddedToTree[Sum.value] = new TreeFinder();
+                        Sum.red = Buffer[y, x].red;
+                        Sum.green = Buffer[y, x].green;
+                        Sum.blue = Buffer[y, x].blue;
+                        DColor.Add(Sum);
                     }
 
                     p += nOffset;
                 }
                 original_bm.UnlockBits(bmd);
             }
-            k.AddRange(DColor.Keys);
-            int loop = DColor.Keys.Count;
+            int loop = DColor.Count; Ksim = new int[loop];
+            k = DColor.ToList();
+            DColor.Clear();
             for (int i = 0; i < loop; i++)
             {
-                color tempcolor = DColor[k[i]];
+                RGBPixel tempcolor = k[i];
                 for (int j = 0; j < i; j++)
                 {
-                    color tempcolorj = DColor[k[j]];
+                    RGBPixel tempcolorj = k[j];
                     edges.Add(new edge(
                             Math.Sqrt(
                                  Math.Pow(tempcolorj.red - tempcolor.red, 2) +
                                  Math.Pow(tempcolorj.green - tempcolor.green, 2) +
                                  Math.Pow(tempcolorj.blue - tempcolor.blue, 2)
-                                )
-                            , k[j]
-                            , k[i]));
+                                ), j, i));
                 }
             }
-            Console.WriteLine(DColor.Count + " Distinct colors ");
+            Console.WriteLine(k.Count + " Distinct colors ");
             double sum = 0, count = edges.Count();
-            int TreeNum = 0;
+            int counterEdges = 0;
+            int tree = 1;
+            List<List<int>> trees = new List<List<int>>();
             for (int i = 0; i < count; i++)
             {
-                edge Temp = edges.Peek();
-                if (AddedToTree[Temp.points[0]].added && AddedToTree[Temp.points[1]].added && AddedToTree[Temp.points[0]].Tree != AddedToTree[Temp.points[1]].Tree)
+                edge temp = edges.Peek();
+                if (Ksim[temp.points[0]] != 0 && Ksim[temp.points[1]] != 0 && Ksim[temp.points[0]] != Ksim[temp.points[1]])
                 {
-                    int keep = AddedToTree[Temp.points[1]].Tree;
-                    foreach (var j in Tree[AddedToTree[Temp.points[1]].Tree])
-                    {
-                        AddedToTree[j].Tree = AddedToTree[Temp.points[0]].Tree;
-                    }
-                    Tree[AddedToTree[Temp.points[0]].Tree].UnionWith(Tree[keep]);
-                    Tree.Remove(keep);
+                    int keep = Ksim[temp.points[1]];
+                    trees[keep - 1].ForEach(l => Ksim[l] = Ksim[temp.points[0]]);
+                   
+                    trees[Ksim[temp.points[0]] - 1].AddRange(trees[keep - 1]);
                 }
-                else if (AddedToTree[Temp.points[0]].added && AddedToTree[Temp.points[1]].added && (AddedToTree[Temp.points[0]].Tree == AddedToTree[Temp.points[1]].Tree))
+                else if (Ksim[temp.points[0]] != 0 && Ksim[temp.points[1]] != 0 && Ksim[temp.points[0]] == Ksim[temp.points[1]])
                 {
                     edges.Poll();
                     continue;
                 }
-                else if (AddedToTree[Temp.points[0]].added)
+                else if (Ksim[temp.points[0]] != 0)
                 {
-                    AddedToTree[Temp.points[1]].added = true;
-                    AddedToTree[Temp.points[1]].Tree = AddedToTree[Temp.points[0]].Tree;
-                    Tree[AddedToTree[Temp.points[0]].Tree].Add(Temp.points[1]);
+                    Ksim[temp.points[1]] = Ksim[temp.points[0]];
+                    trees[Ksim[temp.points[0]] - 1].Add(temp.points[1]);
 
                 }
-                else if (AddedToTree[Temp.points[1]].added)
+                else if (Ksim[temp.points[1]] != 0)
                 {
-                    AddedToTree[Temp.points[0]].added = true;
-                    AddedToTree[Temp.points[0]].Tree = AddedToTree[Temp.points[1]].Tree;
-                    Tree[AddedToTree[Temp.points[1]].Tree].Add(Temp.points[0]);
-
+                    Ksim[temp.points[0]] = Ksim[temp.points[1]];
+                    trees[Ksim[temp.points[1]] - 1].Add(temp.points[0]);
                 }
                 else
                 {
-                    Tree[TreeNum] = new SortedSet<string>();
-                    AddedToTree[Temp.points[0]].added = true;
-                    AddedToTree[Temp.points[1]].added = true;
-                    AddedToTree[Temp.points[0]].Tree = TreeNum;
-                    AddedToTree[Temp.points[1]].Tree = TreeNum;
-                    Tree[TreeNum].Add(Temp.points[0]);
-                    Tree[TreeNum].Add(Temp.points[1]);
-                    TreeNum++;
+                    List<int> tempTree = new List<int>();
+                    tempTree.AddRange(temp.points);
+                    trees.Add(tempTree);
+                    Ksim[temp.points[0]] = tree;
+                    Ksim[temp.points[1]] = tree;
+                    tree++;
                 }
-                MST.Add(Temp);
-                sum = sum + Temp.distance;
+                sum = sum + temp.distance;
+                MST.Add(temp);
+                counterEdges++;
+                if (counterEdges == loop - 1) break;
                 edges.Poll();
-                if (MST.Count() == loop - 1) break;
             }
             Console.WriteLine(sum + "MST SUM");
             Console.WriteLine("-------------------------------------------------------------");
