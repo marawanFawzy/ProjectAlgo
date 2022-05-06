@@ -64,10 +64,42 @@ namespace ImageQuantization
     /// <summary>
     /// Holds the pixel color in 3 byte values: red, green and blue
     /// </summary>
-    public struct RGBPixel
+    public struct RGBPixel : IComparable<RGBPixel>
     {
+
         public byte red, green, blue;
+        public int num;
+
+        public int CompareTo(RGBPixel other)
+        {
+            if (other.red > this.red)
+            {
+                return 1;
+            }
+            else if (other.red < this.red)
+            {
+                return -1;
+            }
+            else if (other.green > this.green)
+            {
+                return 1;
+            }
+            else if (other.green < this.green)
+            {
+                return -1;
+            }
+            else if (other.blue > this.blue)
+            {
+                return 1;
+            }
+            else if (other.blue < this.blue)
+            {
+                return -1;
+            }
+            return 0;
+        }
     }
+
 
 
     /// <summary>
@@ -84,7 +116,7 @@ namespace ImageQuantization
         {
             PriorityQueue<edge> edges = new PriorityQueue<edge>();
             PriorityQueue<edge> MST = new PriorityQueue<edge>();
-            HashSet<RGBPixel> DColor = new HashSet<RGBPixel>();
+            SortedSet<RGBPixel> DColor = new SortedSet<RGBPixel>();
             List<RGBPixel> k = new List<RGBPixel>();
             int[] Ksim;
             Bitmap original_bm = new Bitmap(ImagePath);
@@ -145,9 +177,11 @@ namespace ImageQuantization
                 }
                 original_bm.UnlockBits(bmd);
             }
+
             int loop = DColor.Count; Ksim = new int[loop];
             k = DColor.ToList();
             DColor.Clear();
+            Console.WriteLine(k.Count + " Distinct colors ");
             for (int i = 0; i < loop; i++)
             {
                 RGBPixel tempcolor = k[i];
@@ -162,7 +196,7 @@ namespace ImageQuantization
                                 ), j, i));
                 }
             }
-            Console.WriteLine(k.Count + " Distinct colors ");
+            Console.WriteLine(edges.Count() + " edges colors ");
             double sum = 0, count = edges.Count();
             int counterEdges = 0;
             int tree = 1;
@@ -170,36 +204,37 @@ namespace ImageQuantization
             for (int i = 0; i < count; i++)
             {
                 edge temp = edges.Peek();
-                if (Ksim[temp.points[0]] != 0 && Ksim[temp.points[1]] != 0 && Ksim[temp.points[0]] != Ksim[temp.points[1]])
+                int Point1 = temp.points[0], Point2 = temp.points[1], KPoint1 = Ksim[Point1], KPoint2 = Ksim[Point2];
+                if (KPoint1 != 0 && KPoint2 != 0 && KPoint1 != KPoint2)
                 {
-                    int keep = Ksim[temp.points[1]];
-                    trees[keep - 1].ForEach(l => Ksim[l] = Ksim[temp.points[0]]);
-                   
-                    trees[Ksim[temp.points[0]] - 1].AddRange(trees[keep - 1]);
+                    int keep = KPoint2;
+                    trees[keep - 1].ForEach(l => Ksim[l] = KPoint1);
+
+                    trees[KPoint1 - 1].AddRange(trees[keep - 1]);
                 }
-                else if (Ksim[temp.points[0]] != 0 && Ksim[temp.points[1]] != 0 && Ksim[temp.points[0]] == Ksim[temp.points[1]])
+                else if (KPoint1 != 0 && KPoint2 != 0 && KPoint1 == KPoint2)
                 {
                     edges.Poll();
                     continue;
                 }
-                else if (Ksim[temp.points[0]] != 0)
+                else if (KPoint1 != 0)
                 {
-                    Ksim[temp.points[1]] = Ksim[temp.points[0]];
-                    trees[Ksim[temp.points[0]] - 1].Add(temp.points[1]);
+                    KPoint2 = KPoint1;
+                    trees[KPoint1 - 1].Add(Point2);
 
                 }
-                else if (Ksim[temp.points[1]] != 0)
+                else if (KPoint2 != 0)
                 {
-                    Ksim[temp.points[0]] = Ksim[temp.points[1]];
-                    trees[Ksim[temp.points[1]] - 1].Add(temp.points[0]);
+                    KPoint1 = KPoint2;
+                    trees[KPoint2 - 1].Add(Point1);
                 }
                 else
                 {
                     List<int> tempTree = new List<int>();
                     tempTree.AddRange(temp.points);
                     trees.Add(tempTree);
-                    Ksim[temp.points[0]] = tree;
-                    Ksim[temp.points[1]] = tree;
+                    KPoint1 = tree;
+                    KPoint2 = tree;
                     tree++;
                 }
                 sum = sum + temp.distance;
