@@ -16,6 +16,7 @@ namespace ImageQuantization
         }
 
         RGBPixel[,] ImageMatrix;
+        List<RGBPixel> p = new List<RGBPixel>();
 
         private void btnOpen_Click(object sender, EventArgs e)
         {
@@ -24,7 +25,7 @@ namespace ImageQuantization
             {
                 //Open the browsed image and display it
                 string OpenedFilePath = openFileDialog1.FileName;
-                ImageMatrix = ImageOperations.OpenImage(OpenedFilePath);
+                ImageMatrix = ImageOperations.OpenImage(OpenedFilePath , ref p);
                 ImageOperations.DisplayImage(ImageMatrix, pictureBox1);
             }
             txtWidth.Text = ImageOperations.GetWidth(ImageMatrix).ToString();
@@ -33,8 +34,8 @@ namespace ImageQuantization
 
         private void btnGaussSmooth_Click(object sender, EventArgs e)
         {
-            int maskSize = (int)nudMaskSize.Value;
-            //ImageMatrix = ImageOperations.GaussianFilter1D(ImageMatrix, maskSize, 1);
+            int clusters = (int)nudMaskSize.Value;
+            ImageMatrix = ImageOperations.Quantize(ImageMatrix, clusters , p);
             ImageOperations.DisplayImage(ImageMatrix, pictureBox2);
         }
 

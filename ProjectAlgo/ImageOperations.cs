@@ -40,15 +40,9 @@ namespace ImageQuantization
             return other.distance.CompareTo(this.distance) * -1;
         }
     }
-    public class color
+    public struct color
     {
         public double red, green, blue;
-        public color(double red, double green, double blue)
-        {
-            this.red = red;
-            this.green = green;
-            this.blue = blue;
-        }
 
     }
     /// <summary>
@@ -76,15 +70,16 @@ namespace ImageQuantization
     /// </summary>
     public class ImageOperations
     {
+        public List<RGBPixel> pallete;
         /// <summary>
         /// Open an image and load it into 2D array of colors (size: Height x Width)
         /// </summary>
         /// <param name="ImagePath">Image file path</param>
         /// <returns>2D array of colors</returns>
-        public static RGBPixel[,] OpenImage(string ImagePath)
+        public static RGBPixel[,] OpenImage(string ImagePath, ref List<RGBPixel> palletaa)
         {
             PriorityQueue<edge> edges = new PriorityQueue<edge>();
-            PriorityQueue<edge> MST = new PriorityQueue<edge>();
+            List<edge> MST = new List<edge>();
             SortedSet<RGBPixel> colorSet = new SortedSet<RGBPixel>();
 
 
@@ -208,8 +203,103 @@ namespace ImageQuantization
                 if (counterEdges == numberOfDistinctColors - 1) break;
                 edges.Poll();
             }
+            trees.Clear();
             Console.WriteLine(MST_SUM + "MST SUM");
             Console.WriteLine("-------------------------------------------------------------");
+            // clustring 
+            indexer = new int[numberOfDistinctColors];
+            int cluster = 1, MST_COUNTER = MST.Count, unClusterd = numberOfDistinctColors, numberOfClusters = 0;
+            List<List<int>> clusters = new List<List<int>>();
+            for (int i = 0; i < MST_COUNTER; i++)
+            {
+                edge temp = MST[i];
+                int p1 = temp.points[0], p2 = temp.points[1], I1 = indexer[p1], I2 = indexer[p2];
+                if (numberOfClusters + unClusterd == 500)
+                {
+                    if (unClusterd == 0) break;
+                    if (I1 == 0)
+                    {
+                        List<int> tempCluster = new List<int>();
+                        tempCluster.Add(p1);
+                        clusters.Add(tempCluster);
+                        indexer[p1] = cluster;
+                        cluster++;
+                        numberOfClusters++;
+                        unClusterd--;
+                    }
+                    if (I2 == 0)
+                    {
+                        List<int> tempCluster = new List<int>();
+                        tempCluster.Add(p2);
+                        clusters.Add(tempCluster);
+                        indexer[p2] = cluster;
+                        cluster++;
+                        numberOfClusters++;
+                        unClusterd--;
+                    }
+                    continue;
+                }
+
+                if (indexer[p1] != 0 && indexer[p2] != 0)
+                {
+                    if (I1 != I2)
+                    {
+                        int keep = I2;
+                        clusters[keep - 1].ForEach(l => indexer[l] = I1);
+                        clusters[I1 - 1].AddRange(clusters[keep - 1]);
+                        clusters[keep - 1].Clear();
+                        numberOfClusters--;
+                    }
+                    else if (I1 == I2)
+                    {
+                        continue;
+                    }
+                }
+                else if (I1 != 0)
+                {
+                    indexer[p2] = I1;
+                    clusters[I1 - 1].Add(p2);
+                    unClusterd--;
+
+                }
+                else if (I2 != 0)
+                {
+                    indexer[p1] = I2;
+                    clusters[I2 - 1].Add(p1);
+                    unClusterd--;
+                }
+                else
+                {
+                    List<int> tempCluster = new List<int>();
+                    tempCluster.AddRange(temp.points);
+                    clusters.Add(tempCluster);
+                    indexer[p1] = cluster;
+                    indexer[p2] = cluster;
+                    cluster++;
+                    numberOfClusters++;
+                    unClusterd -= 2;
+                }
+
+            }
+            palletaa = new List<RGBPixel>();
+            for (int i = 0; i < clusters.Count; i++)
+            {
+                RGBPixel current;
+                double red = 0, green = 0, blue = 0;
+                foreach (var j in clusters[i])
+                {
+                    red = red + k[j].red;
+                    green = green + k[j].green;
+                    blue = blue + k[j].blue;
+                }
+                if (clusters[i].Count == 0) continue;
+                current.red = (byte)Math.Ceiling(red / clusters[i].Count());
+                current.green = (byte)Math.Ceiling(green / clusters[i].Count());
+                current.blue = (byte)Math.Ceiling(blue / clusters[i].Count());
+                palletaa.Add(current);
+            }
+            Console.WriteLine(palletaa.Count);
+            ///////////////////    
             return Buffer;
         }
 
@@ -268,6 +358,8 @@ namespace ImageQuantization
                 }
                 ImageBMP.UnlockBits(bmd);
             }
+            SaveFileDialog dialog = new SaveFileDialog();
+            ImageBMP.Save("myfile.png", ImageFormat.Png);
             PicBox.Image = ImageBMP;
         }
 
@@ -279,86 +371,32 @@ namespace ImageQuantization
         /// <param name="filterSize">Gaussian mask size</param>
         /// <param name="sigma">Gaussian sigma</param>
         /// <returns>smoothed color image</returns>
-        public static RGBPixel[,] GaussianFilter1D(RGBPixel[,] ImageMatrix, int filterSize, double sigma)
+        public static RGBPixel[,] Quantize(RGBPixel[,] ImageMatrix, int clusters, List<RGBPixel> p)
         {
             int Height = GetHeight(ImageMatrix);
             int Width = GetWidth(ImageMatrix);
-
-            color[,] VerFiltered = new color[Height, Width];
             RGBPixel[,] Filtered = new RGBPixel[Height, Width];
-
-
-            // Create Filter in Spatial Domain:
-            //=================================
-            //make the filter ODD size
-            if (filterSize % 2 == 0) filterSize++;
-
-            double[] Filter = new double[filterSize];
-
-            //Compute Filter in Spatial Domain :
-            //==================================
-            double Sum1 = 0;
-            int HalfSize = filterSize / 2;
-            for (int y = -HalfSize; y <= HalfSize; y++)
-            {
-                //Filter[y+HalfSize] = (1.0 / (Math.Sqrt(2 * 22.0/7.0) * Segma)) * Math.Exp(-(double)(y*y) / (double)(2 * Segma * Segma)) ;
-                Filter[y + HalfSize] = Math.Exp(-(double)(y * y) / (double)(2 * sigma * sigma));
-                Sum1 += Filter[y + HalfSize];
-            }
-            for (int y = -HalfSize; y <= HalfSize; y++)
-            {
-                Filter[y + HalfSize] /= Sum1;
-            }
-
-            //Filter Original Image Vertically:
-            //=================================
-            int ii, jj;
-            color Sum;
-            RGBPixel Item1;
-            color Item2;
-
-            for (int j = 0; j < Width; j++)
-                for (int i = 0; i < Height; i++)
-                {
-                    Sum = new color(0, 0, 0);
-                    for (int y = -HalfSize; y <= HalfSize; y++)
-                    {
-                        ii = i + y;
-                        if (ii >= 0 && ii < Height)
-                        {
-                            Item1 = ImageMatrix[ii, j];
-                            Sum.red += Filter[y + HalfSize] * Item1.red;
-                            Sum.green += Filter[y + HalfSize] * Item1.green;
-                            Sum.blue += Filter[y + HalfSize] * Item1.blue;
-                        }
-                    }
-                    VerFiltered[i, j] = Sum;
-                }
-
-            //Filter Resulting Image Horizontally:
-            //===================================
 
             for (int i = 0; i < Height; i++)
                 for (int j = 0; j < Width; j++)
                 {
-                    Sum = new color(0, 0, 0);
-                    Sum.green = 0;
-                    Sum.blue = 0;
-                    for (int x = -HalfSize; x <= HalfSize; x++)
+                    double min_dist = 99999;
+                    int res = 0 ;
+                    for (int k = 0; k < p.Count; k++)
                     {
-                        jj = j + x;
-                        if (jj >= 0 && jj < Width)
+                        double current = Math.Sqrt(
+                                 Math.Pow(ImageMatrix[i, j].red - p[k].red, 2) +
+                                 Math.Pow(ImageMatrix[i, j].green - p[k].green, 2) +
+                                 Math.Pow(ImageMatrix[i, j].blue - p[k].blue, 2));
+                        if (current < min_dist)
                         {
-                            Item2 = VerFiltered[i, jj];
-                            Sum.red += Filter[x + HalfSize] * Item2.red;
-                            Sum.green += Filter[x + HalfSize] * Item2.green;
-                            Sum.blue += Filter[x + HalfSize] * Item2.blue;
-
+                            min_dist = current;
+                            res = k; 
                         }
                     }
-                    Filtered[i, j].red = (byte)Sum.red;
-                    Filtered[i, j].green = (byte)Sum.green;
-                    Filtered[i, j].blue = (byte)Sum.blue;
+                    Filtered[i, j].red = p[res].red;
+                    Filtered[i, j].green = p[res].green;
+                    Filtered[i, j].blue = p[res].blue;
 
 
                 }
