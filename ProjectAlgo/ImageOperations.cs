@@ -78,7 +78,7 @@ namespace ImageQuantization
         /// <returns>2D array of colors</returns>
         public static RGBPixel[,] OpenImage(string ImagePath, ref List<RGBPixel> palletaa)
         {
-            PriorityQueue<edge> edges = new PriorityQueue<edge>();
+            List<edge> edges = new List<edge>();
             List<edge> MST = new List<edge>();
             SortedSet<RGBPixel> colorSet = new SortedSet<RGBPixel>();
 
@@ -156,12 +156,14 @@ namespace ImageQuantization
                                 ), j, i));
                 }
             }
+            edges.Sort();
+
             double MST_SUM = 0;
-            int counterEdges = 0, tree = 1, edgesCounter = edges.Count();
+            int counter_MST_Edges = 0, tree = 1, edgesCounter = edges.Count();
             List<List<int>> trees = new List<List<int>>();
             for (int i = 0; i < edgesCounter; i++)
             {
-                edge temp = edges.Peek();
+                edge temp = edges[i];
                 int p1 = temp.points[0], p2 = temp.points[1], I1 = indexer[p1], I2 = indexer[p2];
                 if (indexer[p1] != 0 && indexer[p2] != 0)
                 {
@@ -173,7 +175,7 @@ namespace ImageQuantization
                     }
                     else if (I1 == I2)
                     {
-                        edges.Poll();
+                        //edges.Poll();
                         continue;
                     }
                 }
@@ -199,22 +201,22 @@ namespace ImageQuantization
                 }
                 MST_SUM = MST_SUM + temp.distance;
                 MST.Add(temp);
-                counterEdges++;
-                if (counterEdges == numberOfDistinctColors - 1) break;
-                edges.Poll();
+                counter_MST_Edges++;
+                if (counter_MST_Edges == numberOfDistinctColors - 1) break;
+                //edges.Poll();
             }
             trees.Clear();
             Console.WriteLine(MST_SUM + "MST SUM");
             Console.WriteLine("-------------------------------------------------------------");
             // clustring 
             indexer = new int[numberOfDistinctColors];
-            int cluster = 1, MST_COUNTER = MST.Count, unClusterd = numberOfDistinctColors, numberOfClusters = 0;
+            int cluster = 1, unClusterd = numberOfDistinctColors, numberOfClusters = 0;
             List<List<int>> clusters = new List<List<int>>();
-            for (int i = 0; i < MST_COUNTER; i++)
+            for (int i = 0; i < counter_MST_Edges; i++)
             {
                 edge temp = MST[i];
                 int p1 = temp.points[0], p2 = temp.points[1], I1 = indexer[p1], I2 = indexer[p2];
-                if (numberOfClusters + unClusterd == 500)
+                if (numberOfClusters + unClusterd == 2160)
                 {
                     if (unClusterd == 0) break;
                     if (I1 == 0)
