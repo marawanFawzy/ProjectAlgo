@@ -13,6 +13,7 @@ using System.Collections;
 
 namespace ImageQuantization
 {
+
     public class edge : IComparable<edge>
     {
         public double distance;
@@ -24,7 +25,7 @@ namespace ImageQuantization
             this.points[1] = point2;
 
         }
-        public edge(double distance)
+        public edge(float distance)
         {
             this.distance = distance;
         }
@@ -42,26 +43,15 @@ namespace ImageQuantization
     }
     public struct color
     {
-        public double red, green, blue;
+        public byte red, green, blue;
 
     }
     /// <summary>
     /// Holds the pixel color in 3 byte values: red, green and blue
     /// </summary>
-    public struct RGBPixel : IComparable<RGBPixel>
+    public struct RGBPixel
     {
         public byte red, green, blue;
-
-        public int CompareTo(RGBPixel other)
-        {
-            if (other.red > this.red) return 1;
-            if (other.red < this.red) return -1;
-            if (other.green > this.green) return 1;
-            if (other.green < this.green) return -1;
-            if (other.blue > this.blue) return 1;
-            if (other.blue < this.blue) return -1;
-            return 0;
-        }
     }
 
 
@@ -70,18 +60,19 @@ namespace ImageQuantization
     /// </summary>
     public class ImageOperations
     {
+
+        public int[,,] mapper = new int[256, 256, 256];
         public List<RGBPixel> pallete;
         /// <summary>
         /// Open an image and load it into 2D array of colors (size: Height x Width)
         /// </summary>
         /// <param name="ImagePath">Image file path</param>
         /// <returns>2D array of colors</returns>
-        public static RGBPixel[,] OpenImage(string ImagePath, ref List<RGBPixel> palletaa)
+        public static RGBPixel[,] OpenImage(string ImagePath, ref List<RGBPixel> palletaa, ref int[,,] mapper, int k)
         {
             List<edge> edges = new List<edge>();
-            List<edge> MST = new List<edge>();
-            SortedSet<RGBPixel> colorSet = new SortedSet<RGBPixel>();
-
+            List<RGBPixel> colorSet = new List<RGBPixel>();
+            bool[,,] colorsBoolArray = new bool[256, 265, 265];
 
             Bitmap original_bm = new Bitmap(ImagePath);
             int Height = original_bm.Height;
@@ -130,7 +121,11 @@ namespace ImageQuantization
                             if (Format24) p += 3;
                             else if (Format32) p += 4;
                         }
-                        colorSet.Add(Buffer[y, x]);
+                        if (colorsBoolArray[Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue] == false)
+                        {
+                            colorsBoolArray[Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue] = true;
+                            colorSet.Add(Buffer[y, x]);
+                        }
                     }
 
                     p += nOffset;
@@ -139,84 +134,72 @@ namespace ImageQuantization
             }
             int numberOfDistinctColors = colorSet.Count;
             Console.WriteLine(numberOfDistinctColors + " Distinct colors ");
-            List<RGBPixel> k = new List<RGBPixel>(colorSet.ToList());
             int[] indexer = new int[numberOfDistinctColors];
-            colorSet.Clear();
-            for (int i = 0; i < numberOfDistinctColors; i++)
+            List<edge> MST = new List<edge>();
+            MST.Add(new edge(0, -1, -1));
+            bool[] partnersOfTheTree = new bool[numberOfDistinctColors];
+            int least = 0;
+            double min = 99999;
+            for (int i = 1; i < colorSet.Count; i++)
             {
-                RGBPixel tempcolor = k[i];
-                for (int j = 0; j < i; j++)
-                {
-                    RGBPixel tempcolorj = k[j];
-                    edges.Add(new edge(
-                            Math.Sqrt(
-                                 Math.Pow(tempcolorj.red - tempcolor.red, 2) +
-                                 Math.Pow(tempcolorj.green - tempcolor.green, 2) +
-                                 Math.Pow(tempcolorj.blue - tempcolor.blue, 2)
-                                ), j, i));
-                }
-            }
-            edges.Sort();
 
+                double dist = Math.Sqrt(
+                                  Math.Pow(colorSet[i].red - colorSet[0].red, 2) +
+                                  Math.Pow(colorSet[i].green - colorSet[0].green, 2) +
+                                  Math.Pow(colorSet[i].blue - colorSet[0].blue, 2));
+                MST.Add(new edge(dist, 0, i));
+                if (dist < min)
+                {
+                    min = dist;
+                    least = i;
+                }
+
+            }
+            partnersOfTheTree[0] = true;
+            partnersOfTheTree[least] = true;
+            for (int i = 1; i < colorSet.Count; i++)
+            {
+                min = 99999;
+                int localLeast = least;
+                for (int j = 1; j < colorSet.Count; j++)
+                {
+                    if (partnersOfTheTree[j] == false)
+                    {
+                        double dist = Math.Sqrt(
+                                      Math.Pow(colorSet[localLeast].red - colorSet[j].red, 2) +
+                                      Math.Pow(colorSet[localLeast].green - colorSet[j].green, 2) +
+                                      Math.Pow(colorSet[localLeast].blue - colorSet[j].blue, 2));
+                        if (dist < MST[j].distance)
+                        {
+                            MST[j].distance = dist;
+                            MST[j].points[0] = localLeast;
+                        }
+                        if (MST[j].distance < min)
+                        {
+                            min = MST[j].distance;
+                            least = MST[j].points[1];
+                        }
+                    }
+                }
+                partnersOfTheTree[least] = true;
+            }
+            MST.Sort();
             double MST_SUM = 0;
-            int counter_MST_Edges = 0, tree = 1, edgesCounter = edges.Count();
-            List<List<int>> trees = new List<List<int>>();
-            for (int i = 0; i < edgesCounter; i++)
+            foreach (var i in MST)
             {
-                edge temp = edges[i];
-                int p1 = temp.points[0], p2 = temp.points[1], I1 = indexer[p1], I2 = indexer[p2];
-                if (indexer[p1] != 0 && indexer[p2] != 0)
-                {
-                    if (I1 != I2)
-                    {
-                        int keep = I2;
-                        trees[keep - 1].ForEach(l => indexer[l] = I1);
-                        trees[I1 - 1].AddRange(trees[keep - 1]);
-                    }
-                    else if (I1 == I2)
-                    {
-                        //edges.Poll();
-                        continue;
-                    }
-                }
-                else if (I1 != 0)
-                {
-                    indexer[p2] = I1;
-                    trees[I1 - 1].Add(p2);
-
-                }
-                else if (I2 != 0)
-                {
-                    indexer[p1] = I2;
-                    trees[I2 - 1].Add(p1);
-                }
-                else
-                {
-                    List<int> tempTree = new List<int>();
-                    tempTree.AddRange(temp.points);
-                    trees.Add(tempTree);
-                    indexer[p1] = tree;
-                    indexer[p2] = tree;
-                    tree++;
-                }
-                MST_SUM = MST_SUM + temp.distance;
-                MST.Add(temp);
-                counter_MST_Edges++;
-                if (counter_MST_Edges == numberOfDistinctColors - 1) break;
-                //edges.Poll();
+                MST_SUM = MST_SUM + i.distance;
             }
-            trees.Clear();
             Console.WriteLine(MST_SUM + "MST SUM");
             Console.WriteLine("-------------------------------------------------------------");
             // clustring 
             indexer = new int[numberOfDistinctColors];
             int cluster = 1, unClusterd = numberOfDistinctColors, numberOfClusters = 0;
             List<List<int>> clusters = new List<List<int>>();
-            for (int i = 0; i < counter_MST_Edges; i++)
+            for (int i = 1; i < numberOfDistinctColors; i++)
             {
                 edge temp = MST[i];
                 int p1 = temp.points[0], p2 = temp.points[1], I1 = indexer[p1], I2 = indexer[p2];
-                if (numberOfClusters + unClusterd == 2160)
+                if (numberOfClusters + unClusterd == k)
                 {
                     if (unClusterd == 0) break;
                     if (I1 == 0)
@@ -273,7 +256,8 @@ namespace ImageQuantization
                 else
                 {
                     List<int> tempCluster = new List<int>();
-                    tempCluster.AddRange(temp.points);
+                    tempCluster.Add(temp.points[0]);
+                    tempCluster.Add(temp.points[1]);
                     clusters.Add(tempCluster);
                     indexer[p1] = cluster;
                     indexer[p2] = cluster;
@@ -283,25 +267,30 @@ namespace ImageQuantization
                 }
 
             }
-            palletaa = new List<RGBPixel>();
+
+            int clusterCounter = 0;
+            palletaa.Clear();
             for (int i = 0; i < clusters.Count; i++)
             {
                 RGBPixel current;
+
                 double red = 0, green = 0, blue = 0;
+                int numberOfClusterElements = clusters[i].Count();
                 foreach (var j in clusters[i])
                 {
-                    red = red + k[j].red;
-                    green = green + k[j].green;
-                    blue = blue + k[j].blue;
+                    red = red + colorSet[j].red;
+                    green = green + colorSet[j].green;
+                    blue = blue + colorSet[j].blue;
+                    mapper[colorSet[j].red, colorSet[j].green, colorSet[j].blue] = clusterCounter;
                 }
                 if (clusters[i].Count == 0) continue;
-                current.red = (byte)Math.Ceiling(red / clusters[i].Count());
-                current.green = (byte)Math.Ceiling(green / clusters[i].Count());
-                current.blue = (byte)Math.Ceiling(blue / clusters[i].Count());
+                current.red = (byte)Math.Ceiling(red / numberOfClusterElements);
+                current.green = (byte)Math.Ceiling(green / numberOfClusterElements);
+                current.blue = (byte)Math.Ceiling(blue / numberOfClusterElements);
                 palletaa.Add(current);
+                clusterCounter++;
             }
             Console.WriteLine(palletaa.Count);
-            ///////////////////    
             return Buffer;
         }
 
@@ -373,7 +362,7 @@ namespace ImageQuantization
         /// <param name="filterSize">Gaussian mask size</param>
         /// <param name="sigma">Gaussian sigma</param>
         /// <returns>smoothed color image</returns>
-        public static RGBPixel[,] Quantize(RGBPixel[,] ImageMatrix, int clusters, List<RGBPixel> p)
+        public static RGBPixel[,] Quantize(RGBPixel[,] ImageMatrix, int clusters, List<RGBPixel> p, ref int[,,] mapper)
         {
             int Height = GetHeight(ImageMatrix);
             int Width = GetWidth(ImageMatrix);
@@ -382,23 +371,11 @@ namespace ImageQuantization
             for (int i = 0; i < Height; i++)
                 for (int j = 0; j < Width; j++)
                 {
-                    double min_dist = 99999;
-                    int res = 0 ;
-                    for (int k = 0; k < p.Count; k++)
-                    {
-                        double current = Math.Sqrt(
-                                 Math.Pow(ImageMatrix[i, j].red - p[k].red, 2) +
-                                 Math.Pow(ImageMatrix[i, j].green - p[k].green, 2) +
-                                 Math.Pow(ImageMatrix[i, j].blue - p[k].blue, 2));
-                        if (current < min_dist)
-                        {
-                            min_dist = current;
-                            res = k; 
-                        }
-                    }
-                    Filtered[i, j].red = p[res].red;
-                    Filtered[i, j].green = p[res].green;
-                    Filtered[i, j].blue = p[res].blue;
+                    RGBPixel quantized = new RGBPixel();
+                    quantized = p[mapper[ImageMatrix[i, j].red, ImageMatrix[i, j].green, ImageMatrix[i, j].blue]];
+                    Filtered[i, j].red = quantized.red;
+                    Filtered[i, j].green = quantized.green;
+                    Filtered[i, j].blue = quantized.blue;
 
 
                 }
