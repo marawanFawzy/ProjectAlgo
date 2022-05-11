@@ -10,20 +10,17 @@ using System.Collections;
 ///Algorithms Project
 ///Intelligent Scissors
 ///
-
 namespace ImageQuantization
 {
-
     public class edge : IComparable<edge>
     {
-        public double distance;
+        public double distance = 0;
         public int[] points = new int[2];
         public edge(double distance, int point1, int point2)
         {
             this.distance = distance;
             this.points[0] = point1;
             this.points[1] = point2;
-
         }
         public edge(float distance)
         {
@@ -35,7 +32,6 @@ namespace ImageQuantization
             this.points[0] = e.points[0];
             this.points[1] = e.points[1];
         }
-
         public int CompareTo(edge other)
         {
             return other.distance.CompareTo(this.distance) * -1;
@@ -44,7 +40,6 @@ namespace ImageQuantization
     public struct color
     {
         public byte red, green, blue;
-
     }
     /// <summary>
     /// Holds the pixel color in 3 byte values: red, green and blue
@@ -53,14 +48,11 @@ namespace ImageQuantization
     {
         public byte red, green, blue;
     }
-
-
     /// <summary>
     /// Library of static functions that deal with images
     /// </summary>
     public class ImageOperations
     {
-
         public int[,,] mapper = new int[256, 256, 256];
         public List<RGBPixel> pallete;
         /// <summary>
@@ -72,10 +64,9 @@ namespace ImageQuantization
         {
             List<edge> edges = new List<edge>();
             List<RGBPixel> colorSet = new List<RGBPixel>();
-            List<edge> MST = new List<edge>();
+            edge[] MST;
             List<List<int>> clusters = new List<List<int>>();
             bool[,,] colorsBoolArray = new bool[256, 265, 265];
-
             Bitmap original_bm = new Bitmap(ImagePath);
             int Height = original_bm.Height;
             int Width = original_bm.Width;
@@ -107,7 +98,6 @@ namespace ImageQuantization
                 byte* p = (byte*)bmd.Scan0;
                 for (y = 0; y < Height; y++)
                 {
-
                     for (x = 0; x < Width; x++)
                     {
                         if (Format8)
@@ -129,7 +119,6 @@ namespace ImageQuantization
                             colorSet.Add(Buffer[y, x]);
                         }
                     }
-
                     p += nOffset;
                 }
                 original_bm.UnlockBits(bmd);
@@ -138,64 +127,47 @@ namespace ImageQuantization
             Console.WriteLine(numberOfDistinctColors + " Distinct colors ");
             bool[] partnersOfTheTree = new bool[numberOfDistinctColors];
             int[] indexer = new int[numberOfDistinctColors];
-            double min = 99999;
-            MST.Add(new edge(0, -1, -1));
+            double min , dist;
+            MST = new edge[numberOfDistinctColors];
+            MST[0] = new edge(0, -1, -1);
+            partnersOfTheTree[0] = true;
             for (int i = 0; i < numberOfDistinctColors; i++)
             {
-                if (i == 0)
+                min = 99999;
+                int localLeast = least;
+                for (int j = 0; j < numberOfDistinctColors; j++)
                 {
-                    for (int i0 = 1; i0 < numberOfDistinctColors; i0++)
+                    if (partnersOfTheTree[j] == false)
                     {
-                        double dist = Math.Sqrt(
-                                          Math.Pow(colorSet[i0].red - colorSet[0].red, 2) +
-                                          Math.Pow(colorSet[i0].green - colorSet[0].green, 2) +
-                                          Math.Pow(colorSet[i0].blue - colorSet[0].blue, 2));
-                        MST.Add(new edge(dist, 0, i0));
-                        if (dist < min)
-                        {
-                            min = dist;
-                            least = i0;
-                        }
+                        dist = Math.Sqrt(Math.Pow(colorSet[localLeast].red - colorSet[j].red, 2) +
+                                      Math.Pow(colorSet[localLeast].green - colorSet[j].green, 2) +
+                                      Math.Pow(colorSet[localLeast].blue - colorSet[j].blue, 2));
 
-                    }
-                    partnersOfTheTree[0] = true;
-                    partnersOfTheTree[least] = true;
-                }
-                else
-                {
-                    min = 99999;
-                    int localLeast = least;
-                    for (int j = 1; j < numberOfDistinctColors; j++)
-                    {
-                        if (partnersOfTheTree[j] == false)
+                        if (i == 0) MST[j] = new edge(dist, i, j);
+                        else
                         {
-                            double dist = Math.Sqrt(
-                                          Math.Pow(colorSet[localLeast].red - colorSet[j].red, 2) +
-                                          Math.Pow(colorSet[localLeast].green - colorSet[j].green, 2) +
-                                          Math.Pow(colorSet[localLeast].blue - colorSet[j].blue, 2));
-                            edge tmp =  MST[j];
-                            if (dist < tmp.distance)
+                            edge tmp = MST[j];
+                            if (dist <= tmp.distance)
                             {
                                 MST[j].distance = dist;
                                 MST[j].points[0] = localLeast;
                             }
-                            if (tmp.distance < min)
+                            if (tmp.distance <= min)
                             {
                                 min = tmp.distance;
                                 least = tmp.points[1];
                             }
                         }
                     }
-                    partnersOfTheTree[least] = true;
                 }
+                partnersOfTheTree[least] = true;
             }
-           
             double MST_SUM = 0;
-            MST.ForEach(l => MST_SUM = MST_SUM + l.distance);
-            Console.WriteLine(MST_SUM + "MST SUM");
+            for (int i = 0; i < MST.Length; i++) MST_SUM = MST_SUM + MST[i].distance;
+            Console.WriteLine(MST_SUM + " MST SUM");
             Console.WriteLine("-------------------------------------------------------------");
             // clustring 
-            MST.Sort();
+            Sorting(MST, MST.Length);
             indexer = new int[numberOfDistinctColors];
             int cluster = 1, unClusterd = numberOfDistinctColors, numberOfClusters = 0;
             for (int i = 1; i < numberOfDistinctColors; i++)
@@ -227,7 +199,6 @@ namespace ImageQuantization
                     }
                     continue;
                 }
-
                 if (indexer[p1] != 0 && indexer[p2] != 0)
                 {
                     if (I1 != I2)
@@ -348,8 +319,6 @@ namespace ImageQuantization
             ImageBMP.Save("myfile.png", ImageFormat.Png);
             PicBox.Image = ImageBMP;
         }
-
-
         /// <summary>
         /// Apply Gaussian smoothing filter to enhance the edge detection 
         /// </summary>
@@ -376,7 +345,27 @@ namespace ImageQuantization
 
             return Filtered;
         }
-
+        static void Sorting(edge[] collection, int N) => QSort(0, N - 1, collection, N);
+        static void Swap(int i, int j, edge[] collection)
+        {
+            edge tmp = collection[i];
+            collection[i] = collection[j];
+            collection[j] = tmp;
+        }
+        static void QSort(int startIndex, int finalIndex, edge[] collection, int N)
+        {
+            if (startIndex >= finalIndex) return;
+            int i = startIndex, j = finalIndex;
+            while (i <= j)
+            {
+                while (i < N && collection[startIndex].distance >= collection[i].distance) i++;
+                while (j > -1 && collection[startIndex].distance < collection[j].distance) j--;
+                if (i <= j) Swap(i, j, collection);
+            }
+            Swap(startIndex, j, collection);
+            QSort(startIndex, j - 1, collection, N);
+            QSort(i, finalIndex, collection, N);
+        }
 
     }
 }
