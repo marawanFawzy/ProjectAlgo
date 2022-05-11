@@ -15,29 +15,33 @@ namespace ImageQuantization
             InitializeComponent();
         }
 
-        RGBPixel[,] ImageMatrix;
-        List<RGBPixel> p = new List<RGBPixel>();
+        RGBPixel[,] ImageMatrixOriginal, ImageMatrixQuantized;
+        List<RGBPixel> p = new List<RGBPixel>() , colorSet = new List<RGBPixel>();
+        List<List<int>> clustersList = new List<List<int>>();
+        List<edge> MST;
         int[,,] mapper = new int[256, 256, 256];
         private void btnOpen_Click(object sender, EventArgs e)
         {
             OpenFileDialog openFileDialog1 = new OpenFileDialog();
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
-                int clusters = (int)nudMaskSize.Value;
                 //Open the browsed image and display it
                 string OpenedFilePath = openFileDialog1.FileName;
-                ImageMatrix = ImageOperations.OpenImage(OpenedFilePath , ref p , ref mapper , clusters);
-                ImageOperations.DisplayImage(ImageMatrix, pictureBox1);
+                ImageMatrixOriginal = ImageOperations.OpenImage(OpenedFilePath, ref mapper, ref colorSet);
+                ImageOperations.DisplayImage(ImageMatrixOriginal, pictureBox1);
+                MST = ImageOperations.CalculateMST(colorSet.Count, colorSet);
             }
-            txtWidth.Text = ImageOperations.GetWidth(ImageMatrix).ToString();
-            txtHeight.Text = ImageOperations.GetHeight(ImageMatrix).ToString();
+            txtWidth.Text = ImageOperations.GetWidth(ImageMatrixOriginal).ToString();
+            txtHeight.Text = ImageOperations.GetHeight(ImageMatrixOriginal).ToString();
         }
 
         private void btnGaussSmooth_Click(object sender, EventArgs e)
         {
             int clusters = (int)nudMaskSize.Value;
-            ImageMatrix = ImageOperations.Quantize(ImageMatrix, clusters , p, ref mapper);
-            ImageOperations.DisplayImage(ImageMatrix, pictureBox2);
+            clustersList = ImageOperations.clustring(colorSet.Count, MST, clusters);
+            p = ImageOperations.generatePallete(clustersList, colorSet, ref mapper);
+            ImageMatrixQuantized = ImageOperations.Quantize(ImageMatrixOriginal, p, mapper);
+            ImageOperations.DisplayImage(ImageMatrixQuantized, pictureBox2);
         }
 
         private void pictureBox1_Click(object sender, EventArgs e)

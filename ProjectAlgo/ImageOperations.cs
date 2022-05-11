@@ -60,12 +60,10 @@ namespace ImageQuantization
         /// </summary>
         /// <param name="ImagePath">Image file path</param>
         /// <returns>2D array of colors</returns>
-        public static RGBPixel[,] OpenImage(string ImagePath, ref List<RGBPixel> palletaa, ref int[,,] mapper, int k)
+        public static RGBPixel[,] OpenImage(string ImagePath, ref int[,,] mapper , ref List<RGBPixel> colorSet)
         {
-            List<edge> edges = new List<edge>();
-            List<RGBPixel> colorSet = new List<RGBPixel>();
-            edge[] MST;
-            List<List<int>> clusters = new List<List<int>>();
+            //List<edge> edges = new List<edge>();
+            colorSet = new List<RGBPixel>();
             bool[,,] colorsBoolArray = new bool[256, 265, 265];
             Bitmap original_bm = new Bitmap(ImagePath);
             int Height = original_bm.Height;
@@ -123,13 +121,117 @@ namespace ImageQuantization
                 }
                 original_bm.UnlockBits(bmd);
             }
-            int numberOfDistinctColors = colorSet.Count, least = 0;
-            Console.WriteLine(numberOfDistinctColors + " Distinct colors ");
+            Console.WriteLine(colorSet.Count + " Distinct colors ");
+            return Buffer;
+        }
+        /// <summary>
+        /// Get the height of the image 
+        /// </summary>
+        /// <param name="ImageMatrix">2D array that contains the image</param>
+        /// <returns>Image Height</returns>
+        public static int GetHeight(RGBPixel[,] ImageMatrix)
+        {
+            return ImageMatrix.GetLength(0);
+        }
+        /// <summary>
+        /// Get the width of the image 
+        /// </summary>
+        /// <param name="ImageMatrix">2D array that contains the image</param>
+        /// <returns>Image Width</returns>
+        public static int GetWidth(RGBPixel[,] ImageMatrix)
+        {
+            return ImageMatrix.GetLength(1);
+        }
+        /// <summary>
+        /// Display the given image on the given PictureBox object
+        /// </summary>
+        /// <param name="ImageMatrix">2D array that contains the image</param>
+        /// <param name="PicBox">PictureBox object to display the image on it</param>
+        public static void DisplayImage(RGBPixel[,] ImageMatrix, PictureBox PicBox)
+        {
+            // Create Image:
+            //==============
+            int Height = ImageMatrix.GetLength(0);
+            int Width = ImageMatrix.GetLength(1);
+            Bitmap ImageBMP = new Bitmap(Width, Height, PixelFormat.Format24bppRgb);
+            unsafe
+            {
+                BitmapData bmd = ImageBMP.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.ReadWrite, ImageBMP.PixelFormat);
+                int nWidth = 0;
+                nWidth = Width * 3;
+                int nOffset = bmd.Stride - nWidth;
+                byte* p = (byte*)bmd.Scan0;
+                for (int i = 0; i < Height; i++)
+                {
+                    for (int j = 0; j < Width; j++)
+                    {
+                        p[2] = ImageMatrix[i, j].red;
+                        p[1] = ImageMatrix[i, j].green;
+                        p[0] = ImageMatrix[i, j].blue;
+                        p += 3;
+                    }
+
+                    p += nOffset;
+                }
+                ImageBMP.UnlockBits(bmd);
+            }
+            SaveFileDialog dialog = new SaveFileDialog();
+            ImageBMP.Save("myfile.png", ImageFormat.Png);
+            PicBox.Image = ImageBMP;
+        }
+        /// <summary>
+        /// Apply Gaussian smoothing filter to enhance the edge detection 
+        /// </summary>
+        /// <param name="ImageMatrix">Colored image matrix</param>
+        /// <param name="filterSize">Gaussian mask size</param>
+        /// <param name="sigma">Gaussian sigma</param>
+        /// <returns>smoothed color image</returns>
+        public static RGBPixel[,] Quantize(RGBPixel[,] ImageMatrix, List<RGBPixel> p, int[,,] mapper)
+        {
+            int Height = GetHeight(ImageMatrix);
+            int Width = GetWidth(ImageMatrix);
+            RGBPixel[,] Filtered = new RGBPixel[Height, Width];
+            for (int i = 0; i < Height; i++)
+                for (int j = 0; j < Width; j++)
+                {
+                    RGBPixel quantized = new RGBPixel();
+                    quantized = p[mapper[ImageMatrix[i, j].red, ImageMatrix[i, j].green, ImageMatrix[i, j].blue]];
+                    Filtered[i, j].red = quantized.red;
+                    Filtered[i, j].green = quantized.green;
+                    Filtered[i, j].blue = quantized.blue;
+                }
+            return Filtered;
+        }
+        static void Sorting(edge[] collection, int N) => QSort(0, N - 1, collection, N);
+        static void Swap(int i, int j, edge[] collection)
+        {
+            edge tmp = collection[i];
+            collection[i] = collection[j];
+            collection[j] = tmp;
+        }
+        public static void QSort(int startIndex, int finalIndex, edge[] collection, int N)
+        {
+            if (startIndex >= finalIndex) return;
+            int i = startIndex, j = finalIndex;
+            while (i <= j)
+            {
+                while (i < N && collection[startIndex].distance >= collection[i].distance) i++;
+                while (j > -1 && collection[startIndex].distance < collection[j].distance) j--;
+                if (i <= j) Swap(i, j, collection);
+            }
+            Swap(startIndex, j, collection);
+            QSort(startIndex, j - 1, collection, N);
+            QSort(i, finalIndex, collection, N);
+        }
+        public static List<edge> CalculateMST(int numberOfDistinctColors , List<RGBPixel> colorSet)
+        {
+            List<edge> MST;
             bool[] partnersOfTheTree = new bool[numberOfDistinctColors];
             int[] indexer = new int[numberOfDistinctColors];
-            double min , dist;
-            MST = new edge[numberOfDistinctColors];
-            MST[0] = new edge(0, -1, -1);
+            double min, dist;
+            int least = 0;
+            MST = new List<edge>();
+            MST.Add( new edge(0, -1, -1));
             partnersOfTheTree[0] = true;
             for (int i = 0; i < numberOfDistinctColors; i++)
             {
@@ -143,7 +245,7 @@ namespace ImageQuantization
                                       Math.Pow(colorSet[localLeast].green - colorSet[j].green, 2) +
                                       Math.Pow(colorSet[localLeast].blue - colorSet[j].blue, 2));
 
-                        if (i == 0) MST[j] = new edge(dist, i, j);
+                        if (i == 0) MST.Add( new edge(dist, i, j));
                         else
                         {
                             edge tmp = MST[j];
@@ -163,12 +265,16 @@ namespace ImageQuantization
                 partnersOfTheTree[least] = true;
             }
             double MST_SUM = 0;
-            for (int i = 0; i < MST.Length; i++) MST_SUM = MST_SUM + MST[i].distance;
+            for (int i = 0; i < MST.Count; i++) MST_SUM = MST_SUM + MST[i].distance;
             Console.WriteLine(MST_SUM + " MST SUM");
             Console.WriteLine("-------------------------------------------------------------");
-            // clustring 
-            Sorting(MST, MST.Length);
-            indexer = new int[numberOfDistinctColors];
+            return MST;
+        }
+        public static List<List<int>> clustring(int numberOfDistinctColors , List<edge> MST, int k)
+        {
+            MST.Sort();
+            List<List<int>> clusters = new List<List<int>>();
+            int[] indexer = new int[numberOfDistinctColors];
             int cluster = 1, unClusterd = numberOfDistinctColors, numberOfClusters = 0;
             for (int i = 1; i < numberOfDistinctColors; i++)
             {
@@ -240,9 +346,14 @@ namespace ImageQuantization
                     unClusterd -= 2;
                 }
             }
-            int clusterCounter = 0;
-            palletaa.Clear();
-            for (int i = 0; i < clusters.Count; i++)
+            return clusters;
+        }
+        public static List<RGBPixel> generatePallete( List<List<int>> clusters, List<RGBPixel> colorSet , ref int[,,] mapper)
+        {
+            mapper = new int[256, 256, 256];
+            List<RGBPixel> palletaa = new List<RGBPixel>();
+            int clusterCounter = 0 , count  = clusters.Count;
+            for (int i = 0; i < count; i++)
             {
                 RGBPixel current;
                 double red = 0, green = 0, blue = 0;
@@ -262,110 +373,7 @@ namespace ImageQuantization
                 clusterCounter++;
             }
             Console.WriteLine(palletaa.Count);
-            return Buffer;
+            return palletaa;
         }
-        /// <summary>
-        /// Get the height of the image 
-        /// </summary>
-        /// <param name="ImageMatrix">2D array that contains the image</param>
-        /// <returns>Image Height</returns>
-        public static int GetHeight(RGBPixel[,] ImageMatrix)
-        {
-            return ImageMatrix.GetLength(0);
-        }
-        /// <summary>
-        /// Get the width of the image 
-        /// </summary>
-        /// <param name="ImageMatrix">2D array that contains the image</param>
-        /// <returns>Image Width</returns>
-        public static int GetWidth(RGBPixel[,] ImageMatrix)
-        {
-            return ImageMatrix.GetLength(1);
-        }
-        /// <summary>
-        /// Display the given image on the given PictureBox object
-        /// </summary>
-        /// <param name="ImageMatrix">2D array that contains the image</param>
-        /// <param name="PicBox">PictureBox object to display the image on it</param>
-        public static void DisplayImage(RGBPixel[,] ImageMatrix, PictureBox PicBox)
-        {
-            // Create Image:
-            //==============
-            int Height = ImageMatrix.GetLength(0);
-            int Width = ImageMatrix.GetLength(1);
-            Bitmap ImageBMP = new Bitmap(Width, Height, PixelFormat.Format24bppRgb);
-            unsafe
-            {
-                BitmapData bmd = ImageBMP.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.ReadWrite, ImageBMP.PixelFormat);
-                int nWidth = 0;
-                nWidth = Width * 3;
-                int nOffset = bmd.Stride - nWidth;
-                byte* p = (byte*)bmd.Scan0;
-                for (int i = 0; i < Height; i++)
-                {
-                    for (int j = 0; j < Width; j++)
-                    {
-                        p[2] = ImageMatrix[i, j].red;
-                        p[1] = ImageMatrix[i, j].green;
-                        p[0] = ImageMatrix[i, j].blue;
-                        p += 3;
-                    }
-
-                    p += nOffset;
-                }
-                ImageBMP.UnlockBits(bmd);
-            }
-            SaveFileDialog dialog = new SaveFileDialog();
-            ImageBMP.Save("myfile.png", ImageFormat.Png);
-            PicBox.Image = ImageBMP;
-        }
-        /// <summary>
-        /// Apply Gaussian smoothing filter to enhance the edge detection 
-        /// </summary>
-        /// <param name="ImageMatrix">Colored image matrix</param>
-        /// <param name="filterSize">Gaussian mask size</param>
-        /// <param name="sigma">Gaussian sigma</param>
-        /// <returns>smoothed color image</returns>
-        public static RGBPixel[,] Quantize(RGBPixel[,] ImageMatrix, int clusters, List<RGBPixel> p, ref int[,,] mapper)
-        {
-            int Height = GetHeight(ImageMatrix);
-            int Width = GetWidth(ImageMatrix);
-            RGBPixel[,] Filtered = new RGBPixel[Height, Width];
-            for (int i = 0; i < Height; i++)
-                for (int j = 0; j < Width; j++)
-                {
-                    RGBPixel quantized = new RGBPixel();
-                    quantized = p[mapper[ImageMatrix[i, j].red, ImageMatrix[i, j].green, ImageMatrix[i, j].blue]];
-                    Filtered[i, j].red = quantized.red;
-                    Filtered[i, j].green = quantized.green;
-                    Filtered[i, j].blue = quantized.blue;
-
-
-                }
-
-            return Filtered;
-        }
-        static void Sorting(edge[] collection, int N) => QSort(0, N - 1, collection, N);
-        static void Swap(int i, int j, edge[] collection)
-        {
-            edge tmp = collection[i];
-            collection[i] = collection[j];
-            collection[j] = tmp;
-        }
-        static void QSort(int startIndex, int finalIndex, edge[] collection, int N)
-        {
-            if (startIndex >= finalIndex) return;
-            int i = startIndex, j = finalIndex;
-            while (i <= j)
-            {
-                while (i < N && collection[startIndex].distance >= collection[i].distance) i++;
-                while (j > -1 && collection[startIndex].distance < collection[j].distance) j--;
-                if (i <= j) Swap(i, j, collection);
-            }
-            Swap(startIndex, j, collection);
-            QSort(startIndex, j - 1, collection, N);
-            QSort(i, finalIndex, collection, N);
-        }
-
     }
 }
