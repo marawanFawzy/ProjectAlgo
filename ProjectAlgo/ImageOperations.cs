@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Drawing.Imaging;
-using NetTopologySuite.Utilities;
 using System.Linq;
-using System.Collections;
+using System.Diagnostics;
 ///Algorithms Project
 ///Intelligent Scissors
 ///
@@ -22,20 +20,7 @@ namespace ImageQuantization
             this.points[0] = point1;
             this.points[1] = point2;
         }
-        public edge(float distance)
-        {
-            this.distance = distance;
-        }
-        public edge(edge e)
-        {
-            this.distance = e.distance;
-            this.points[0] = e.points[0];
-            this.points[1] = e.points[1];
-        }
-        public int CompareTo(edge other)
-        {
-            return other.distance.CompareTo(this.distance) * -1;
-        }
+        public int CompareTo(edge other) => other.distance.CompareTo(this.distance) * -1;
     }
     public struct color
     {
@@ -53,14 +38,14 @@ namespace ImageQuantization
     /// </summary>
     public class ImageOperations
     {
-        public int[,,] mapper = new int[256, 256, 256];
-        public List<RGBPixel> pallete;
+        public static Stopwatch overAllTime = new Stopwatch();
+        public static double phase1Time;
         /// <summary>
         /// Open an image and load it into 2D array of colors (size: Height x Width)
         /// </summary>
         /// <param name="ImagePath">Image file path</param>
         /// <returns>2D array of colors</returns>
-        public static RGBPixel[,] OpenImage(string ImagePath, ref int[,,] mapper , ref List<RGBPixel> colorSet)
+        public static RGBPixel[,] OpenImage(string ImagePath, ref int[,,] mapper, ref List<RGBPixel> colorSet)
         {
             //List<edge> edges = new List<edge>();
             colorSet = new List<RGBPixel>();
@@ -69,8 +54,12 @@ namespace ImageQuantization
             int Height = original_bm.Height;
             int Width = original_bm.Width;
             RGBPixel[,] Buffer = new RGBPixel[Height, Width];
+            Stopwatch DistinctTime = new Stopwatch();
+            DistinctTime.Start();
+            overAllTime.Start();
             unsafe
             {
+
                 BitmapData bmd = original_bm.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.ReadWrite, original_bm.PixelFormat);
                 int x, y;
                 int nWidth = 0;
@@ -121,7 +110,13 @@ namespace ImageQuantization
                 }
                 original_bm.UnlockBits(bmd);
             }
-            Console.WriteLine(colorSet.Count + " Distinct colors ");
+
+
+            //Console.WriteLine(colorSet.Count + " Distinct colors ");
+            DistinctTime.Stop();
+            overAllTime.Stop();
+            MessageBox.Show(colorSet.Count.ToString() + " Number of distinct colors in time " + DistinctTime.ElapsedMilliseconds + " ms");
+
             return Buffer;
         }
         /// <summary>
@@ -186,69 +181,42 @@ namespace ImageQuantization
         /// <param name="filterSize">Gaussian mask size</param>
         /// <param name="sigma">Gaussian sigma</param>
         /// <returns>smoothed color image</returns>
-        public static RGBPixel[,] Quantize(RGBPixel[,] ImageMatrix, List<RGBPixel> p, int[,,] mapper)
+        public static List<edge> CalculateMST(int numberOfDistinctColors, List<RGBPixel> colorSet)
         {
-            int Height = GetHeight(ImageMatrix);
-            int Width = GetWidth(ImageMatrix);
-            RGBPixel[,] Filtered = new RGBPixel[Height, Width];
-            for (int i = 0; i < Height; i++)
-                for (int j = 0; j < Width; j++)
-                {
-                    RGBPixel quantized = new RGBPixel();
-                    quantized = p[mapper[ImageMatrix[i, j].red, ImageMatrix[i, j].green, ImageMatrix[i, j].blue]];
-                    Filtered[i, j].red = quantized.red;
-                    Filtered[i, j].green = quantized.green;
-                    Filtered[i, j].blue = quantized.blue;
-                }
-            return Filtered;
-        }
-        static void Sorting(edge[] collection, int N) => QSort(0, N - 1, collection, N);
-        static void Swap(int i, int j, edge[] collection)
-        {
-            edge tmp = collection[i];
-            collection[i] = collection[j];
-            collection[j] = tmp;
-        }
-        public static void QSort(int startIndex, int finalIndex, edge[] collection, int N)
-        {
-            if (startIndex >= finalIndex) return;
-            int i = startIndex, j = finalIndex;
-            while (i <= j)
-            {
-                while (i < N && collection[startIndex].distance >= collection[i].distance) i++;
-                while (j > -1 && collection[startIndex].distance < collection[j].distance) j--;
-                if (i <= j) Swap(i, j, collection);
-            }
-            Swap(startIndex, j, collection);
-            QSort(startIndex, j - 1, collection, N);
-            QSort(i, finalIndex, collection, N);
-        }
-        public static List<edge> CalculateMST(int numberOfDistinctColors , List<RGBPixel> colorSet)
-        {
-            List<edge> MST;
+            Stopwatch MSTTime = new Stopwatch();
+            MSTTime.Start();
+            overAllTime.Start();
             bool[] partnersOfTheTree = new bool[numberOfDistinctColors];
-            int[] indexer = new int[numberOfDistinctColors];
+            int least = 0, localLeast = 0;
             double min, dist;
-            int least = 0;
-            MST = new List<edge>();
-            MST.Add( new edge(0, -1, -1));
+            edge tmp;
+            List<edge> MST = new List<edge>();
+            MST.Add(new edge(0, 0, 0));
             partnersOfTheTree[0] = true;
             for (int i = 0; i < numberOfDistinctColors; i++)
             {
                 min = 99999;
-                int localLeast = least;
+                localLeast = least;
                 for (int j = 0; j < numberOfDistinctColors; j++)
                 {
                     if (partnersOfTheTree[j] == false)
                     {
                         dist = Math.Sqrt(Math.Pow(colorSet[localLeast].red - colorSet[j].red, 2) +
-                                      Math.Pow(colorSet[localLeast].green - colorSet[j].green, 2) +
-                                      Math.Pow(colorSet[localLeast].blue - colorSet[j].blue, 2));
+                                         Math.Pow(colorSet[localLeast].green - colorSet[j].green, 2) +
+                                         Math.Pow(colorSet[localLeast].blue - colorSet[j].blue, 2));
 
-                        if (i == 0) MST.Add( new edge(dist, i, j));
+                        if (i == 0)
+                        {
+                            MST.Add(new edge(dist, i, j));
+                            if (dist < min)
+                            {
+                                min = dist;
+                                least = j;
+                            }
+                        }
                         else
                         {
-                            edge tmp = MST[j];
+                            tmp = MST[j];
                             if (dist <= tmp.distance)
                             {
                                 MST[j].distance = dist;
@@ -266,20 +234,39 @@ namespace ImageQuantization
             }
             double MST_SUM = 0;
             for (int i = 0; i < MST.Count; i++) MST_SUM = MST_SUM + MST[i].distance;
-            Console.WriteLine(MST_SUM + " MST SUM");
-            Console.WriteLine("-------------------------------------------------------------");
+            MSTTime.Stop();
+            overAllTime.Stop();
+            phase1Time = overAllTime.ElapsedMilliseconds;
+            //Console.WriteLine(MST_SUM + " MST SUM");
+            //int MSTCOUNT = MST.Count();
+            MessageBox.Show(MST_SUM.ToString() + " MST SUM IN TIME " + MSTTime.ElapsedMilliseconds + " ms");
+            //Console.WriteLine(MSTCOUNT - 1 + " MST COUNT");
+            //double MEAN = MST_SUM / MST.Count() - 1;
+            //Console.WriteLine(MEAN + " MST MEAN");
+            ////List<double> std = new List<double>();
+            //double stdSUM = 0;
+            //for (int i = 1; i < MSTCOUNT; i++) stdSUM += Math.Pow((MST[i].distance - MEAN), 2);
+            //stdSUM /= MSTCOUNT - 1;
+            //stdSUM = Math.Sqrt(stdSUM);
+            //Console.WriteLine(stdSUM + " MST STD");
+            //Console.WriteLine("-------------------------------------------------------------");
             return MST;
         }
-        public static List<List<int>> clustring(int numberOfDistinctColors , List<edge> MST, int k)
+        public static List<List<int>> clustering(int numberOfDistinctColors, List<edge> MST, int k)
         {
-            MST.Sort();
+            
+            Stopwatch clusteringTime = new Stopwatch();
+            clusteringTime.Start();
+            overAllTime.Restart();
             List<List<int>> clusters = new List<List<int>>();
             int[] indexer = new int[numberOfDistinctColors];
-            int cluster = 1, unClusterd = numberOfDistinctColors, numberOfClusters = 0;
+            int cluster = 1, unClusterd = numberOfDistinctColors, numberOfClusters = 0, p1, p2, I1, I2;
+            edge tmp;
+            MST.Sort(); // O(NlogN)
             for (int i = 1; i < numberOfDistinctColors; i++)
             {
-                edge temp = MST[i];
-                int p1 = temp.points[0], p2 = temp.points[1], I1 = indexer[p1], I2 = indexer[p2];
+                tmp = MST[i];
+                p1 = tmp.points[0]; p2 = tmp.points[1]; I1 = indexer[p1]; I2 = indexer[p2];
                 if (numberOfClusters + unClusterd == k)
                 {
                     if (unClusterd == 0) break;
@@ -305,20 +292,13 @@ namespace ImageQuantization
                     }
                     continue;
                 }
-                if (indexer[p1] != 0 && indexer[p2] != 0)
+                if (I1 != 0 && I2 != 0 && I1 != I2)
                 {
-                    if (I1 != I2)
-                    {
-                        int keep = I2;
-                        clusters[keep - 1].ForEach(l => indexer[l] = I1);
-                        clusters[I1 - 1].AddRange(clusters[keep - 1]);
-                        clusters[keep - 1].Clear();
-                        numberOfClusters--;
-                    }
-                    else if (I1 == I2)
-                    {
-                        continue;
-                    }
+                    int keep = I2;
+                    clusters[keep - 1].ForEach(l => indexer[l] = I1);
+                    clusters[I1 - 1].AddRange(clusters[keep - 1]);
+                    clusters[keep - 1].Clear();
+                    numberOfClusters--;
                 }
                 else if (I1 != 0)
                 {
@@ -336,8 +316,8 @@ namespace ImageQuantization
                 else
                 {
                     List<int> tempCluster = new List<int>();
-                    tempCluster.Add(temp.points[0]);
-                    tempCluster.Add(temp.points[1]);
+                    tempCluster.Add(tmp.points[0]);
+                    tempCluster.Add(tmp.points[1]);
                     clusters.Add(tempCluster);
                     indexer[p1] = cluster;
                     indexer[p2] = cluster;
@@ -346,13 +326,19 @@ namespace ImageQuantization
                     unClusterd -= 2;
                 }
             }
+            clusteringTime.Stop();
+            overAllTime.Stop();
+            MessageBox.Show("the number of clusters "+ k + " in time " + clusteringTime.ElapsedMilliseconds + " ms" );
             return clusters;
         }
-        public static List<RGBPixel> generatePallete( List<List<int>> clusters, List<RGBPixel> colorSet , ref int[,,] mapper)
+        public static List<RGBPixel> generatePallete(List<List<int>> clusters, List<RGBPixel> colorSet, ref int[,,] mapper)
         {
+            overAllTime.Start();
+            Stopwatch generatePalleteTime = new Stopwatch();
+            generatePalleteTime.Start();
             mapper = new int[256, 256, 256];
             List<RGBPixel> palletaa = new List<RGBPixel>();
-            int clusterCounter = 0 , count  = clusters.Count;
+            int clusterCounter = 0, count = clusters.Count;
             for (int i = 0; i < count; i++)
             {
                 RGBPixel current;
@@ -366,14 +352,41 @@ namespace ImageQuantization
                     mapper[colorSet[j].red, colorSet[j].green, colorSet[j].blue] = clusterCounter;
                 }
                 if (clusters[i].Count == 0) continue;
-                current.red = (byte)Math.Ceiling(red / numberOfClusterElements);
-                current.green = (byte)Math.Ceiling(green / numberOfClusterElements);
-                current.blue = (byte)Math.Ceiling(blue / numberOfClusterElements);
+                current.red = (byte)(red / numberOfClusterElements);
+                current.green = (byte)(green / numberOfClusterElements);
+                current.blue = (byte)(blue / numberOfClusterElements);
                 palletaa.Add(current);
                 clusterCounter++;
             }
-            Console.WriteLine(palletaa.Count);
+            generatePalleteTime.Stop();
+            overAllTime.Stop();
+            MessageBox.Show("generating Pallet done in  time " + generatePalleteTime.ElapsedMilliseconds + " ms");
             return palletaa;
+        }
+        public static RGBPixel[,] Quantize(RGBPixel[,] ImageMatrix, List<RGBPixel> p, int[,,] mapper)
+        {
+            Stopwatch QuantizeTime = new Stopwatch();
+            QuantizeTime.Start();
+            overAllTime.Start();
+            int Height = GetHeight(ImageMatrix);
+            int Width = GetWidth(ImageMatrix);
+            RGBPixel[,] Filtered = new RGBPixel[Height, Width];
+            for (int i = 0; i < Height; i++)
+                for (int j = 0; j < Width; j++)
+                {
+                    RGBPixel quantized = new RGBPixel();
+                    quantized = p[mapper[ImageMatrix[i, j].red, ImageMatrix[i, j].green, ImageMatrix[i, j].blue]];
+                    Filtered[i, j].red = quantized.red;
+                    Filtered[i, j].green = quantized.green;
+                    Filtered[i, j].blue = quantized.blue;
+                }
+            QuantizeTime.Stop();
+            overAllTime.Stop();
+            MessageBox.Show("image mapping colors done in time " + QuantizeTime.ElapsedMilliseconds + " ms");
+            MessageBox.Show("over all time is  " + (overAllTime.ElapsedMilliseconds+phase1Time) + " ms");
+            MessageBox.Show("over all time is  " + ((overAllTime.ElapsedMilliseconds+phase1Time) / 1000) + " S");
+            MessageBox.Show("over all time is  " + ((overAllTime.ElapsedMilliseconds+phase1Time) / 1000 / 60) + " M");
+            return Filtered;
         }
     }
 }

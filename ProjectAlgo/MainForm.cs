@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
@@ -27,6 +28,7 @@ namespace ImageQuantization
             {
                 //Open the browsed image and display it
                 string OpenedFilePath = openFileDialog1.FileName;
+                
                 ImageMatrixOriginal = ImageOperations.OpenImage(OpenedFilePath, ref mapper, ref colorSet);
                 ImageOperations.DisplayImage(ImageMatrixOriginal, pictureBox1);
                 MST = ImageOperations.CalculateMST(colorSet.Count, colorSet);
@@ -38,7 +40,7 @@ namespace ImageQuantization
         private void btnGaussSmooth_Click(object sender, EventArgs e)
         {
             int clusters = (int)nudMaskSize.Value;
-            clustersList = ImageOperations.clustring(colorSet.Count, MST, clusters);
+            clustersList = ImageOperations.clustering(colorSet.Count, MST, clusters);
             p = ImageOperations.generatePallete(clustersList, colorSet, ref mapper);
             ImageMatrixQuantized = ImageOperations.Quantize(ImageMatrixOriginal, p, mapper);
             ImageOperations.DisplayImage(ImageMatrixQuantized, pictureBox2);
