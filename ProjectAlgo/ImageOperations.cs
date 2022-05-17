@@ -188,49 +188,52 @@ namespace ImageQuantization
             overAllTime.Start();
             bool[] partnersOfTheTree = new bool[numberOfDistinctColors];
             int least = 0, localLeast = 0;
-            double min, dist;
+            double min = 99999, dist;
             edge tmp;
             List<edge> MST = new List<edge>();
             MST.Add(new edge(0, 0, 0));
-            partnersOfTheTree[0] = true;
-            for (int i = 0; i < numberOfDistinctColors; i++)
+            int k = 1;
+            while (k < numberOfDistinctColors)
+            {
+
+                dist = Math.Sqrt(Math.Pow(colorSet[localLeast].red - colorSet[k].red, 2) +
+                                       Math.Pow(colorSet[localLeast].green - colorSet[k].green, 2) +
+                                       Math.Pow(colorSet[localLeast].blue - colorSet[k].blue, 2));
+                MST.Add(new edge(dist, 0, k));
+                if (dist < min)
+                {
+                    min = dist;
+                    least = k;
+                }
+                k++;
+            }
+            k = 1;
+            while (k < numberOfDistinctColors)
             {
                 min = 99999;
+                partnersOfTheTree[least] = true;
                 localLeast = least;
-                for (int j = 0; j < numberOfDistinctColors; j++)
+                for (int j = 1; j < numberOfDistinctColors; j++)
                 {
                     if (partnersOfTheTree[j] == false)
                     {
                         dist = Math.Sqrt(Math.Pow(colorSet[localLeast].red - colorSet[j].red, 2) +
                                          Math.Pow(colorSet[localLeast].green - colorSet[j].green, 2) +
                                          Math.Pow(colorSet[localLeast].blue - colorSet[j].blue, 2));
-
-                        if (i == 0)
+                        tmp = MST[j];
+                        if (dist < tmp.distance)
                         {
-                            MST.Add(new edge(dist, i, j));
-                            if (dist < min)
-                            {
-                                min = dist;
-                                least = j;
-                            }
+                            MST[j].distance = dist;
+                            MST[j].points[0] = localLeast;
                         }
-                        else
+                        if (tmp.distance < min)
                         {
-                            tmp = MST[j];
-                            if (dist <= tmp.distance)
-                            {
-                                MST[j].distance = dist;
-                                MST[j].points[0] = localLeast;
-                            }
-                            if (tmp.distance <= min)
-                            {
-                                min = tmp.distance;
-                                least = tmp.points[1];
-                            }
+                            min = tmp.distance;
+                            least = tmp.points[1];
                         }
                     }
                 }
-                partnersOfTheTree[least] = true;
+                k++;
             }
             double MST_SUM = 0;
             for (int i = 0; i < MST.Count; i++) MST_SUM = MST_SUM + MST[i].distance;
@@ -254,7 +257,7 @@ namespace ImageQuantization
         }
         public static List<List<int>> clustering(int numberOfDistinctColors, List<edge> MST, int k)
         {
-            
+
             Stopwatch clusteringTime = new Stopwatch();
             clusteringTime.Start();
             overAllTime.Restart();
@@ -328,7 +331,7 @@ namespace ImageQuantization
             }
             clusteringTime.Stop();
             overAllTime.Stop();
-            MessageBox.Show("the number of clusters "+ k + " in time " + clusteringTime.ElapsedMilliseconds + " ms" );
+            MessageBox.Show("the number of clusters " + k + " in time " + clusteringTime.ElapsedMilliseconds + " ms");
             return clusters;
         }
         public static List<RGBPixel> generatePallete(List<List<int>> clusters, List<RGBPixel> colorSet, ref int[,,] mapper)
@@ -383,9 +386,9 @@ namespace ImageQuantization
             QuantizeTime.Stop();
             overAllTime.Stop();
             MessageBox.Show("image mapping colors done in time " + QuantizeTime.ElapsedMilliseconds + " ms");
-            MessageBox.Show("over all time is  " + (overAllTime.ElapsedMilliseconds+phase1Time) + " ms");
-            MessageBox.Show("over all time is  " + ((overAllTime.ElapsedMilliseconds+phase1Time) / 1000) + " S");
-            MessageBox.Show("over all time is  " + ((overAllTime.ElapsedMilliseconds+phase1Time) / 1000 / 60) + " M");
+            MessageBox.Show("over all time is  " + (overAllTime.ElapsedMilliseconds + phase1Time) + " ms");
+            MessageBox.Show("over all time is  " + ((overAllTime.ElapsedMilliseconds + phase1Time) / 1000) + " S");
+            MessageBox.Show("over all time is  " + ((overAllTime.ElapsedMilliseconds + phase1Time) / 1000 / 60) + " M");
             return Filtered;
         }
     }
