@@ -355,9 +355,9 @@ namespace ImageQuantization
                     mapper[colorSet[j].red, colorSet[j].green, colorSet[j].blue] = clusterCounter;
                 }
                 if (clusters[i].Count == 0) continue;
-                current.red = (byte)(red / numberOfClusterElements);
-                current.green = (byte)(green / numberOfClusterElements);
-                current.blue = (byte)(blue / numberOfClusterElements);
+                current.red = (byte)Math.Round(red / numberOfClusterElements);
+                current.green = (byte)Math.Round(green / numberOfClusterElements);
+                current.blue = (byte)Math.Round(blue / numberOfClusterElements);
                 palletaa.Add(current);
                 clusterCounter++;
             }
