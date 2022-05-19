@@ -83,9 +83,9 @@ namespace ImageQuantization
                 }
                 int nOffset = bmd.Stride - nWidth;
                 byte* p = (byte*)bmd.Scan0;
-                for (y = 0; y < Height; y++)
+                for (y = 0; y < Height; y++)//O(N)
                 {
-                    for (x = 0; x < Width; x++)
+                    for (x = 0; x < Width; x++)//O(N)
                     {
                         if (Format8)
                         {
@@ -100,10 +100,13 @@ namespace ImageQuantization
                             if (Format24) p += 3;
                             else if (Format32) p += 4;
                         }
-                        if (colorsBoolArray[Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue] == false)
+                        // check if the color is present in the list 
+                        if (colorsBoolArray[Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue] == false)//O(1)
                         {
-                            colorsBoolArray[Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue] = true;
-                            colorSet.Add(Buffer[y, x]);
+                            // sets the color is present in the list 
+                            colorsBoolArray[Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue] = true;//O(1)
+                            // adds the color to list
+                            colorSet.Add(Buffer[y, x]);//O(1)
                         }
                     }
                     p += nOffset;
@@ -186,70 +189,94 @@ namespace ImageQuantization
             Stopwatch MSTTime = new Stopwatch();
             MSTTime.Start();
             overAllTime.Start();
+            // bool array to check optimized vertcies 
             bool[] partnersOfTheTree = new bool[numberOfDistinctColors];
             int least = 0, localLeast = 0;
             double min = 99999, dist;
+            // holds the edge to reduce access time
             edge tmp;
             List<edge> MST = new List<edge>();
-            MST.Add(new edge(0, 0, 0));
+            // adds a fake edge to start the MST indexing from 1 
+            MST.Add(new edge(0, 0, 0));//O(1)
             int k = 1;
-            while (k < numberOfDistinctColors)
+            // loops from 0 to all other vertcies
+            while (k < numberOfDistinctColors)//O(N)
             {
-                byte red1 = colorSet[localLeast].red;
-                byte green1 = colorSet[localLeast].green;
-                byte blue1 = colorSet[localLeast].blue;
-                byte red2 = colorSet[k].red;
-                byte green2 = colorSet[k].green;
-                byte blue2 = colorSet[k].blue;
-                double red = (red1 - red2) * (red1 - red2);
-                double green = (green1 - green2) * (green1 - green2);
-                double blue = (blue1 - blue2) * (blue1 - blue2);
-                dist = Math.Sqrt(red + green + blue);
-                MST.Add(new edge(dist, 0, k));
-                if (dist < min)
+                // calculating the distance 
+                byte red1 = colorSet[localLeast].red;//O(1)
+                byte green1 = colorSet[localLeast].green;//O(1)
+                byte blue1 = colorSet[localLeast].blue;//O(1)
+                byte red2 = colorSet[k].red;//O(1)
+                byte green2 = colorSet[k].green;//O(1)
+                byte blue2 = colorSet[k].blue;//O(1)
+                double red = (red1 - red2) * (red1 - red2);//O(1)
+                double green = (green1 - green2) * (green1 - green2);//O(1)
+                double blue = (blue1 - blue2) * (blue1 - blue2);//O(1)
+                dist = Math.Sqrt(red + green + blue);//O(1)
+                // adding the edge to the initial MST
+                MST.Add(new edge(dist, 0, k));//O(1)
+                // checks if it is the minimmum edge to start from its end
+                if (dist < min)//O(1)
                 {
-                    min = dist;
-                    least = k;
+                    // change the minimum
+                    min = dist;//O(1)
+                    // save the index of the next start over
+                    least = k;//O(1)
                 }
                 k++;
             }
             k = 1;
-            while (k < numberOfDistinctColors)
+            // looping from every vertix exept of 0 to the others 
+            while (k < numberOfDistinctColors)//O(N)
             {
+                //reset the min for every vertix 
                 min = 99999;
+                //set the startPoint as optiml way found 
                 partnersOfTheTree[least] = true;
+                // reserve the start point index to prevent fomr modifications 
                 localLeast = least;
-                for (int j = 1; j < numberOfDistinctColors; j++)
+                // check the distance to all others from the current start point 
+                for (int j = 1; j < numberOfDistinctColors; j++)//O(D)
                 {
-                    if (partnersOfTheTree[j] == false)
+                    // exclude the optimal points if found 
+                    if (partnersOfTheTree[j] == false)//O(D)
                     {
-                        byte red1 = colorSet[localLeast].red;
-                        byte green1 = colorSet[localLeast].green;
-                        byte blue1 = colorSet[localLeast].blue;
-                        byte red2 = colorSet[j].red;
-                        byte green2 = colorSet[j].green;
-                        byte blue2 = colorSet[j].blue;
-                        double red = (red1 - red2) * (red1 - red2);
-                        double green = (green1 - green2) * (green1 - green2);
-                        double blue = (blue1 - blue2) * (blue1 - blue2);
-                        dist = Math.Sqrt(red + green + blue);
-                        tmp = MST[j];
-                        if (dist < tmp.distance)
+                        // calculating the distance 
+                        byte red1 = colorSet[localLeast].red;//O(1)
+                        byte green1 = colorSet[localLeast].green;//O(1)
+                        byte blue1 = colorSet[localLeast].blue;//O(1)
+                        byte red2 = colorSet[j].red;//O(1)
+                        byte green2 = colorSet[j].green;//O(1)
+                        byte blue2 = colorSet[j].blue;//O(1)
+                        double red = (red1 - red2) * (red1 - red2);//O(1)
+                        double green = (green1 - green2) * (green1 - green2);//O(1)
+                        double blue = (blue1 - blue2) * (blue1 - blue2);//O(1)
+                        dist = Math.Sqrt(red + green + blue);//O(1)
+                        // hold the edge to reduce access time
+                        tmp = MST[j];//O(1)
+                        //check if it is a better way to this vertix 
+                        if (dist < tmp.distance)//O(1)
                         {
-                            MST[j].distance = dist;
-                            MST[j].points[0] = localLeast;
+                            //replace the distance 
+                            MST[j].distance = dist;//O(1)
+                            //replace the starting index 
+                            MST[j].points[0] = localLeast;//O(1)
                         }
-                        if (tmp.distance < min)
+                        //check if it is the best edge in the tree to set the next start point
+                        if (tmp.distance < min)//O(1)
                         {
-                            min = tmp.distance;
-                            least = tmp.points[1];
+                            //change the min 
+                            min = tmp.distance;//O(1)
+                            // reserve the index 
+                            least = tmp.points[1];//O(1)
                         }
                     }
                 }
                 k++;
             }
             double MST_SUM = 0;
-            for (int i = 0; i < MST.Count; i++) MST_SUM = MST_SUM + MST[i].distance;
+            //calculating the MST SUM 
+            for (int i = 0; i < MST.Count; i++) MST_SUM = MST_SUM + MST[i].distance;//O(N)
             MSTTime.Stop();
             overAllTime.Stop();
             phase1Time = overAllTime.ElapsedMilliseconds;
@@ -279,70 +306,96 @@ namespace ImageQuantization
             overAllTime.Restart();
             List<List<int>> clusters = new List<List<int>>();
             int[] indexer = new int[numberOfDistinctColors];
-            int cluster = 1, unClusterd = numberOfDistinctColors, numberOfClusters = 0, p1, p2, I1, I2;
+            int cluster = 1, unClusterd = numberOfDistinctColors, numberOfClusters = 0, p1, p2, I1, I2;//O(1)
             edge tmp;
-            MST.Sort(); // O(NlogN)
-            for (int i = 1; i < numberOfDistinctColors; i++)
+            MST.Sort(); // O(Nlog(N))
+            // loop on every edge to get it's 2 points 
+            for (int i = 1; i < numberOfDistinctColors; i++)//O(E)
             {
+                // holds the edge to reduce access time
                 tmp = MST[i];
+                // holds the edge points and their indexer value to reduce access time
                 p1 = tmp.points[0]; p2 = tmp.points[1]; I1 = indexer[p1]; I2 = indexer[p2];
-                if (numberOfClusters + unClusterd == k)
+                // if the clusters are found 
+                if (numberOfClusters + unClusterd == k)//O(1)
                 {
-                    if (unClusterd == 0) break;
+                    //if all points are clusterd then break ;
+                    if (unClusterd == 0) break;//O(1)
+                    // if the point refrences 0 as not clustered  
                     if (I1 == 0)
                     {
-                        List<int> tempCluster = new List<int>();
-                        tempCluster.Add(p1);
-                        clusters.Add(tempCluster);
-                        indexer[p1] = cluster;
-                        cluster++;
-                        numberOfClusters++;
-                        unClusterd--;
+                        // create a new cluster to hold this point 
+                        List<int> tempCluster = new List<int>();//O(1)
+                        tempCluster.Add(p1);//O(1)
+                        clusters.Add(tempCluster);//O(1)
+                        indexer[p1] = cluster;//O(1)
+                        cluster++;//O(1)
+                        numberOfClusters++;//O(1)
+                        unClusterd--; //O(1)
                     }
-                    if (I2 == 0)
+                    // if the point refrences 0 as not clustered  
+                    if (I2 == 0)//O(1)
                     {
-                        List<int> tempCluster = new List<int>();
-                        tempCluster.Add(p2);
-                        clusters.Add(tempCluster);
-                        indexer[p2] = cluster;
-                        cluster++;
-                        numberOfClusters++;
-                        unClusterd--;
+                        // create a new cluster to hold this point 
+                        List<int> tempCluster = new List<int>();//O(1)
+                        tempCluster.Add(p2);//O(1)
+                        clusters.Add(tempCluster);//O(1)
+                        indexer[p2] = cluster;//O(1)
+                        cluster++;//O(1)
+                        numberOfClusters++;//O(1)
+                        unClusterd--;//O(1)
                     }
                     continue;
                 }
-                if (I1 != 0 && I2 != 0 && I1 != I2)
+                // if both are clusterd and not the same cluster
+                if (I1 != 0 && I2 != 0 && I1 != I2)//O(1)
                 {
-                    int keep = I2;
-                    clusters[keep - 1].ForEach(l => indexer[l] = I1);
-                    clusters[I1 - 1].AddRange(clusters[keep - 1]);
-                    clusters[keep - 1].Clear();
-                    numberOfClusters--;
+                    int keep = I2;//O(1)
+                    //change every value of the indexer of the 2nd point to referance the cluseter of the 1st point 
+                    clusters[keep - 1].ForEach(l => indexer[l] = I1);//O(N)
+                    //union the 2 clusters 
+                    clusters[I1 - 1].Union(clusters[keep - 1]);//O(Log(N))
+                    // clears the derprecated cluster
+                    clusters[keep - 1].Clear();//O(1)
+                    // reduce the number of clusters
+                    numberOfClusters--;//O(1)
                 }
+                //if only one point is clusterd
                 else if (I1 != 0)
                 {
-                    indexer[p2] = I1;
-                    clusters[I1 - 1].Add(p2);
-                    unClusterd--;
+                    //set the referance to the other point to referance he smae cluster as the first 
+                    indexer[p2] = I1;//O(1)
+                    //add the other to its cluster 
+                    clusters[I1 - 1].Add(p2);//O(1)
+                    // reduce the number of unClusterd
+                    unClusterd--;//O(1)
 
                 }
-                else if (I2 != 0)
+                //if only one point is clusterd
+                else if (I2 != 0)//O(1)
                 {
-                    indexer[p1] = I2;
-                    clusters[I2 - 1].Add(p1);
-                    unClusterd--;
+                    //set the referance to the other point to referance he smae cluster as the first 
+                    indexer[p1] = I2;//O(1)
+                    //add the other to its cluster 
+                    clusters[I2 - 1].Add(p1);//O(1)
+                    // reduce the number of unClusterd
+                    unClusterd--;//O(1)
                 }
+                // if both are not clusterd 
                 else
                 {
+                    // create new cluster 
                     List<int> tempCluster = new List<int>();
-                    tempCluster.Add(tmp.points[0]);
-                    tempCluster.Add(tmp.points[1]);
-                    clusters.Add(tempCluster);
-                    indexer[p1] = cluster;
-                    indexer[p2] = cluster;
-                    cluster++;
-                    numberOfClusters++;
-                    unClusterd -= 2;
+                    // add both points
+                    tempCluster.Add(tmp.points[0]);//O(1)
+                    tempCluster.Add(tmp.points[1]);//O(1)
+                    clusters.Add(tempCluster);//O(1)
+                    // set the referance to both points as the cluster number 
+                    indexer[p1] = cluster;//O(1)
+                    indexer[p2] = cluster;//O(1)
+                    cluster++;//O(1)
+                    numberOfClusters++;//O(1)
+                    unClusterd -= 2;//O(1)
                 }
             }
             clusteringTime.Stop();
@@ -355,27 +408,35 @@ namespace ImageQuantization
             overAllTime.Start();
             Stopwatch generatePalleteTime = new Stopwatch();
             generatePalleteTime.Start();
-            mapper = new int[256, 256, 256];
+            //re intiailize the mapper to over write any old data 
+            mapper = new int[256, 256, 256];//O(1)
             List<RGBPixel> palletaa = new List<RGBPixel>();
             int clusterCounter = 0, count = clusters.Count;
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < count; i++)//O(N)
             {
-                RGBPixel current;
-                double red = 0, green = 0, blue = 0;
-                int numberOfClusterElements = clusters[i].Count();
+                // holds the color 
+                RGBPixel current;//O(1)
+                double red = 0, green = 0, blue = 0;//O(1)
+                int numberOfClusterElements = clusters[i].Count();//O(1)
+                // clculates the avarage of red , green and blue
                 foreach (var j in clusters[i])
                 {
                     red = red + colorSet[j].red;
                     green = green + colorSet[j].green;
                     blue = blue + colorSet[j].blue;
-                    mapper[colorSet[j].red, colorSet[j].green, colorSet[j].blue] = clusterCounter;
+                    //sets the referance to the color to it's cluster number
+                    mapper[colorSet[j].red, colorSet[j].green, colorSet[j].blue] = clusterCounter;//O(1)
                 }
+                // overcoming the error from clustring step by skipping every empty cluster 
                 if (clusters[i].Count == 0) continue;
-                current.red = (byte)Math.Round(red / numberOfClusterElements);
-                current.green = (byte)Math.Round(green / numberOfClusterElements);
-                current.blue = (byte)Math.Round(blue / numberOfClusterElements);
-                palletaa.Add(current);
-                clusterCounter++;
+                // round to handle double numbers error 
+                current.red = (byte)Math.Round(red / numberOfClusterElements);//O(1)
+                current.green = (byte)Math.Round(green / numberOfClusterElements);//O(1)
+                current.blue = (byte)Math.Round(blue / numberOfClusterElements);//O(1)
+                // add the color to the pallet list in the same refernce to the mapper 
+                palletaa.Add(current);//O(1)
+                // change ther referance 
+                clusterCounter++;//O(1)
             }
             generatePalleteTime.Stop();
             overAllTime.Stop();
@@ -390,14 +451,17 @@ namespace ImageQuantization
             int Height = GetHeight(ImageMatrix);
             int Width = GetWidth(ImageMatrix);
             RGBPixel[,] Filtered = new RGBPixel[Height, Width];
-            for (int i = 0; i < Height; i++)
-                for (int j = 0; j < Width; j++)
+            //loop to get every pixel in the picture to replace 
+            for (int i = 0; i < Height; i++)//O(N)
+                for (int j = 0; j < Width; j++)//O(N)
                 {
                     RGBPixel quantized = new RGBPixel();
-                    quantized = p[mapper[ImageMatrix[i, j].red, ImageMatrix[i, j].green, ImageMatrix[i, j].blue]];
-                    Filtered[i, j].red = quantized.red;
-                    Filtered[i, j].green = quantized.green;
-                    Filtered[i, j].blue = quantized.blue;
+                    //gets the pallet referance from the mapper then saves the color 
+                    quantized = p[mapper[ImageMatrix[i, j].red, ImageMatrix[i, j].green, ImageMatrix[i, j].blue]];//O(1)
+                    //replace the old color by it's representitive 
+                    Filtered[i, j].red = quantized.red;//O(1)
+                    Filtered[i, j].green = quantized.green;//O(1)
+                    Filtered[i, j].blue = quantized.blue;//O(1)
                 }
             QuantizeTime.Stop();
             overAllTime.Stop();
