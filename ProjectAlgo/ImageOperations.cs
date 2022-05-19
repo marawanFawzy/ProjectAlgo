@@ -195,10 +195,16 @@ namespace ImageQuantization
             int k = 1;
             while (k < numberOfDistinctColors)
             {
-
-                dist = Math.Sqrt(Math.Pow(colorSet[localLeast].red - colorSet[k].red, 2) +
-                                       Math.Pow(colorSet[localLeast].green - colorSet[k].green, 2) +
-                                       Math.Pow(colorSet[localLeast].blue - colorSet[k].blue, 2));
+                byte red1 = colorSet[localLeast].red;
+                byte green1 = colorSet[localLeast].green;
+                byte blue1 = colorSet[localLeast].blue;
+                byte red2 = colorSet[k].red;
+                byte green2 = colorSet[k].green;
+                byte blue2 = colorSet[k].blue;
+                double red = (red1 - red2) * (red1 - red2);
+                double green = (green1 - green2) * (green1 - green2);
+                double blue = (blue1 - blue2) * (blue1 - blue2);
+                dist = Math.Sqrt(red + green + blue);
                 MST.Add(new edge(dist, 0, k));
                 if (dist < min)
                 {
@@ -217,9 +223,16 @@ namespace ImageQuantization
                 {
                     if (partnersOfTheTree[j] == false)
                     {
-                        dist = Math.Sqrt(Math.Pow(colorSet[localLeast].red - colorSet[j].red, 2) +
-                                         Math.Pow(colorSet[localLeast].green - colorSet[j].green, 2) +
-                                         Math.Pow(colorSet[localLeast].blue - colorSet[j].blue, 2));
+                        byte red1 = colorSet[localLeast].red;
+                        byte green1 = colorSet[localLeast].green;
+                        byte blue1 = colorSet[localLeast].blue;
+                        byte red2 = colorSet[j].red;
+                        byte green2 = colorSet[j].green;
+                        byte blue2 = colorSet[j].blue;
+                        double red = (red1 - red2) * (red1 - red2);
+                        double green = (green1 - green2) * (green1 - green2);
+                        double blue = (blue1 - blue2) * (blue1 - blue2);
+                        dist = Math.Sqrt(red + green + blue);
                         tmp = MST[j];
                         if (dist < tmp.distance)
                         {
@@ -241,15 +254,18 @@ namespace ImageQuantization
             overAllTime.Stop();
             phase1Time = overAllTime.ElapsedMilliseconds;
             //Console.WriteLine(MST_SUM + " MST SUM");
-            //int MSTCOUNT = MST.Count();
+            //int MSTCOUNT = MST.Count()-1;
             MessageBox.Show(MST_SUM.ToString() + " MST SUM IN TIME " + MSTTime.ElapsedMilliseconds + " ms");
             //Console.WriteLine(MSTCOUNT - 1 + " MST COUNT");
-            //double MEAN = MST_SUM / MST.Count() - 1;
+            //double MEAN = MST_SUM / (MST.Count() - 1);
             //Console.WriteLine(MEAN + " MST MEAN");
             ////List<double> std = new List<double>();
             //double stdSUM = 0;
+            //int current = 0;
+            //double currentMean = MEAN;
+            //int current_MSTCOUNT = MSTCOUNT;
             //for (int i = 1; i < MSTCOUNT; i++) stdSUM += Math.Pow((MST[i].distance - MEAN), 2);
-            //stdSUM /= MSTCOUNT - 1;
+            //stdSUM /= (MSTCOUNT - 1);
             //stdSUM = Math.Sqrt(stdSUM);
             //Console.WriteLine(stdSUM + " MST STD");
             //Console.WriteLine("-------------------------------------------------------------");
