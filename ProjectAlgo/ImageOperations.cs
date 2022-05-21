@@ -354,7 +354,7 @@ namespace ImageQuantization
                     //change every value of the indexer of the 2nd point to referance the cluseter of the 1st point 
                     clusters[keep - 1].ForEach(l => indexer[l] = I1);//O(N)
                     //union the 2 clusters 
-                    clusters[I1 - 1].Union(clusters[keep - 1]);//O(Log(N))
+                    clusters[I1 - 1].AddRange(clusters[keep - 1]);//O(Log(N))
                     // clears the derprecated cluster
                     clusters[keep - 1].Clear();//O(1)
                     // reduce the number of clusters
