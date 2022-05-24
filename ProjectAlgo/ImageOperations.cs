@@ -302,6 +302,9 @@ namespace ImageQuantization
         public static double MST_SUM = 0;
         public static List<List<int>> clustering(int numberOfDistinctColors, List<edge> MST, int k)
         {
+            Stopwatch clusterTime = new Stopwatch();
+            clusterTime.Start();
+            overAllTime.Restart();
             int cluster_counter = 0;
             List<List<int>> clusters = new List<List<int>>();
             Queue<int> q = new Queue<int>();
@@ -328,7 +331,6 @@ namespace ImageQuantization
                     MEAN = MEAN * (STDcount + 1);
                     MEAN = MEAN - MST[r + 1].distance;
                     MEAN = MEAN / STDcount;
-                    STDcount--;
                     for (int i = h; i < r - 1; i++)
                         stdSUM_loop += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
                     stdSUM_loop /= STDcount;
@@ -342,13 +344,14 @@ namespace ImageQuantization
                     MEAN = MEAN - MST[h].distance;
                     MEAN = MEAN / STDcount;
                     h++;
-                    STDcount--;
+                    
                     for (int i = h + 1; i < r; i++)
                         stdSUM_loop += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
                     stdSUM_loop /= STDcount;
                     stdSUM_loop = Math.Sqrt(stdSUM_loop);
                     graph[MST[h].points[1]].Remove(MST[h].points[0]);//O(N)
                 }
+                STDcount--;
                 if (STDcount == 0) break;
             }
             for (int f = 0; f < graph.Count; f++)//O(D)
@@ -372,6 +375,9 @@ namespace ImageQuantization
                     }
                     cluster_counter++;
                 }
+            clusterTime.Stop();
+            overAllTime.Stop();
+            MessageBox.Show("number of cluster "+ clusters.Count + " --> clustring done in " + clusterTime.ElapsedMilliseconds + " ms");
             return clusters;
         }
         public static List<RGBPixel> generatePallete(List<List<int>> clusters, List<RGBPixel> colorSet, ref int[,,] mapper)
