@@ -318,7 +318,7 @@ namespace ImageQuantization
             double MEAN = MST_SUM / MSTCOUNT;//O(1)
             double stdSUM = 0;//O(1)
             int STDcount = MSTCOUNT - 1;//O(1)
-            // calculate the standerd deveation  
+            // calculate the standard deviation   
             for (int i = 0; i < MSTCOUNT; i++)//O(E) bouns loop 
                 stdSUM += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
             stdSUM /= STDcount;
@@ -327,7 +327,7 @@ namespace ImageQuantization
             double stdSUM_loop = stdSUM;
             int h = 0;//O(1)
             int r = MSTCOUNT - 1;//O(1)
-            while (Math.Abs(stdSUM - stdSUM_loop) >= 0.0001 || h == 0)//O(E) bouns loop // to check if stoping 
+            while (Math.Abs(stdSUM - stdSUM_loop) >= 0.0001 || h == 0)//O(E) bouns loop // to check if stopping 
             {
                 stdSUM = stdSUM_loop;
                 stdSUM_loop = 0;
@@ -341,7 +341,7 @@ namespace ImageQuantization
                     MEAN = MEAN - MST[r].distance;
                     MEAN = MEAN / STDcount;
                     r--;// skipping this edge 
-                    //calculate new standerd deveation
+                    //calculate new standard deviation   
                     for (int i = h; i < r; i++)//O(E) bouns loop 
                         stdSUM_loop += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
                     stdSUM_loop /= STDcount;
@@ -357,7 +357,7 @@ namespace ImageQuantization
                     MEAN = MEAN - MST[h].distance;
                     MEAN = MEAN / STDcount;
                     h++; // skipping this edge 
-                    //calculate new standerd deveation
+                    //calculate new standard deviation 
                     for (int i = h; i < r; i++)//O(E) bouns loop 
                         stdSUM_loop += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
                     stdSUM_loop /= STDcount;
