@@ -20,7 +20,7 @@ namespace ImageQuantization
             this.points[0] = point1;
             this.points[1] = point2;
         }
-        public int CompareTo(edge other) => other.distance.CompareTo(this.distance) * -1;
+        public int CompareTo(edge other) => other.distance.CompareTo(this.distance) * 1;
     }
     public struct color
     {
@@ -40,6 +40,7 @@ namespace ImageQuantization
     {
         public static Stopwatch overAllTime = new Stopwatch();
         public static double phase1Time;
+        public static List<List<int>> graph = new List<List<int>>();
         /// <summary>
         /// Open an image and load it into 2D array of colors (size: Height x Width)
         /// </summary>
@@ -54,6 +55,7 @@ namespace ImageQuantization
             int Height = original_bm.Height;
             int Width = original_bm.Width;
             RGBPixel[,] Buffer = new RGBPixel[Height, Width];
+            graph = new List<List<int>>();
             Stopwatch DistinctTime = new Stopwatch();
             DistinctTime.Start();
             overAllTime.Start();
@@ -107,6 +109,7 @@ namespace ImageQuantization
                             colorsBoolArray[Buffer[y, x].red, Buffer[y, x].green, Buffer[y, x].blue] = true;//O(1)
                             // adds the color to list
                             colorSet.Add(Buffer[y, x]);//O(1)
+                            graph.Add(new List<int>());
                         }
                     }
                     p += nOffset;
@@ -215,6 +218,8 @@ namespace ImageQuantization
                 dist = Math.Sqrt(red + green + blue);//O(1)
                 // adding the edge to the initial MST
                 MST.Add(new edge(dist, 0, k));//O(1)
+                graph[localLeast].Add(k);
+                graph[k].Add(localLeast);
                 // checks if it is the minimmum edge to start from its end
                 if (dist < min)//O(1)
                 {
@@ -257,10 +262,14 @@ namespace ImageQuantization
                         //check if it is a better way to this vertix 
                         if (dist < tmp.distance)//O(1)
                         {
+                            graph[j].Remove(MST[j].points[0]);
+                            graph[MST[j].points[0]].Remove(j);
                             //replace the distance 
                             MST[j].distance = dist;//O(1)
                             //replace the starting index 
                             MST[j].points[0] = localLeast;//O(1)
+                            graph[j].Add(MST[j].points[0]);
+                            graph[MST[j].points[0]].Add(j);
                         }
                         //check if it is the best edge in the tree to set the next start point
                         if (tmp.distance < min)//O(1)
@@ -274,133 +283,95 @@ namespace ImageQuantization
                 }
                 k++;
             }
-            double MST_SUM = 0;
+            MST_SUM = 0;
             //calculating the MST SUM 
             for (int i = 0; i < MST.Count; i++) MST_SUM = MST_SUM + MST[i].distance;//O(N)
             MSTTime.Stop();
             overAllTime.Stop();
             phase1Time = overAllTime.ElapsedMilliseconds;
             //Console.WriteLine(MST_SUM + " MST SUM");
-            //int MSTCOUNT = MST.Count()-1;
             MessageBox.Show(MST_SUM.ToString() + " MST SUM IN TIME " + MSTTime.ElapsedMilliseconds + " ms");
             //Console.WriteLine(MSTCOUNT - 1 + " MST COUNT");
-            //double MEAN = MST_SUM / (MST.Count() - 1);
             //Console.WriteLine(MEAN + " MST MEAN");
             ////List<double> std = new List<double>();
             //double stdSUM = 0;
             //int current = 0;
-            //double currentMean = MEAN;
-            //int current_MSTCOUNT = MSTCOUNT;
-            //for (int i = 1; i < MSTCOUNT; i++) stdSUM += Math.Pow((MST[i].distance - MEAN), 2);
-            //stdSUM /= (MSTCOUNT - 1);
-            //stdSUM = Math.Sqrt(stdSUM);
-            //Console.WriteLine(stdSUM + " MST STD");
-            //Console.WriteLine("-------------------------------------------------------------");
+
             return MST;
         }
+        public static double MST_SUM = 0;
         public static List<List<int>> clustering(int numberOfDistinctColors, List<edge> MST, int k)
         {
-
-            Stopwatch clusteringTime = new Stopwatch();
-            clusteringTime.Start();
-            overAllTime.Restart();
+            int cluster_counter = 0;
             List<List<int>> clusters = new List<List<int>>();
-            int[] indexer = new int[numberOfDistinctColors];
-            int cluster = 1, unClusterd = numberOfDistinctColors, numberOfClusters = 0, p1, p2, I1, I2;//O(1)
-            edge tmp;
-            MST.Sort(); // O(Nlog(N))
-            // loop on every edge to get it's 2 points 
-            for (int i = 1; i < numberOfDistinctColors; i++)//O(E)
+            Queue<int> q = new Queue<int>();
+            bool[] partnersOfTheTree = new bool[numberOfDistinctColors];
+            MST.Sort();//O(Nlog(N))
+            int MSTCOUNT = MST.Count() - 1;
+            double MEAN = MST_SUM / MSTCOUNT;
+            double stdSUM = 0;
+            int STDcount = MSTCOUNT - 1;
+            for (int i = 0; i < MSTCOUNT; i++) stdSUM += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
+            stdSUM /= STDcount;
+            stdSUM = Math.Sqrt(stdSUM);
+            double stdSUM_loop = stdSUM;
+            int h = 0;//O(1)
+            int r = MSTCOUNT - 1;//O(1)
+            while (Math.Abs(stdSUM - stdSUM_loop) >= 0.0001 || h == 0)//O(K) 
             {
-                // holds the edge to reduce access time
-                tmp = MST[i];
-                // holds the edge points and their indexer value to reduce access time
-                p1 = tmp.points[0]; p2 = tmp.points[1]; I1 = indexer[p1]; I2 = indexer[p2];
-                // if the clusters are found 
-                if (numberOfClusters + unClusterd == k)//O(1)
+                stdSUM = stdSUM_loop;
+                stdSUM_loop = 0;
+                if (((MST[r].distance - MEAN) * -1) >= MST[h].distance - MEAN)
                 {
-                    //if all points are clusterd then break ;
-                    if (unClusterd == 0) break;//O(1)
-                    // if the point refrences 0 as not clustered  
-                    if (I1 == 0)
-                    {
-                        // create a new cluster to hold this point 
-                        List<int> tempCluster = new List<int>();//O(1)
-                        tempCluster.Add(p1);//O(1)
-                        clusters.Add(tempCluster);//O(1)
-                        indexer[p1] = cluster;//O(1)
-                        cluster++;//O(1)
-                        numberOfClusters++;//O(1)
-                        unClusterd--; //O(1)
-                    }
-                    // if the point refrences 0 as not clustered  
-                    if (I2 == 0)//O(1)
-                    {
-                        // create a new cluster to hold this point 
-                        List<int> tempCluster = new List<int>();//O(1)
-                        tempCluster.Add(p2);//O(1)
-                        clusters.Add(tempCluster);//O(1)
-                        indexer[p2] = cluster;//O(1)
-                        cluster++;//O(1)
-                        numberOfClusters++;//O(1)
-                        unClusterd--;//O(1)
-                    }
-                    continue;
+                    graph[MST[r].points[0]].Remove(MST[r].points[1]);//O(N)
+                    r--;
+                    MEAN = MEAN * (STDcount + 1);
+                    MEAN = MEAN - MST[r + 1].distance;
+                    MEAN = MEAN / STDcount;
+                    STDcount--;
+                    for (int i = h; i < r - 1; i++)
+                        stdSUM_loop += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
+                    stdSUM_loop /= STDcount;
+                    stdSUM_loop = Math.Sqrt(stdSUM_loop);
+                    graph[MST[r].points[1]].Remove(MST[r].points[0]);//O(N)
                 }
-                // if both are clusterd and not the same cluster
-                if (I1 != 0 && I2 != 0 && I1 != I2)//O(1)
-                {
-                    int keep = I2;//O(1)
-                    //change every value of the indexer of the 2nd point to referance the cluseter of the 1st point 
-                    clusters[keep - 1].ForEach(l => indexer[l] = I1);//O(N)
-                    //union the 2 clusters 
-                    clusters[I1 - 1].AddRange(clusters[keep - 1]);//O(Log(N))
-                    // clears the derprecated cluster
-                    clusters[keep - 1].Clear();//O(1)
-                    // reduce the number of clusters
-                    numberOfClusters--;//O(1)
-                }
-                //if only one point is clusterd
-                else if (I1 != 0)
-                {
-                    //set the referance to the other point to referance he smae cluster as the first 
-                    indexer[p2] = I1;//O(1)
-                    //add the other to its cluster 
-                    clusters[I1 - 1].Add(p2);//O(1)
-                    // reduce the number of unClusterd
-                    unClusterd--;//O(1)
-
-                }
-                //if only one point is clusterd
-                else if (I2 != 0)//O(1)
-                {
-                    //set the referance to the other point to referance he smae cluster as the first 
-                    indexer[p1] = I2;//O(1)
-                    //add the other to its cluster 
-                    clusters[I2 - 1].Add(p1);//O(1)
-                    // reduce the number of unClusterd
-                    unClusterd--;//O(1)
-                }
-                // if both are not clusterd 
                 else
                 {
-                    // create new cluster 
-                    List<int> tempCluster = new List<int>();
-                    // add both points
-                    tempCluster.Add(tmp.points[0]);//O(1)
-                    tempCluster.Add(tmp.points[1]);//O(1)
-                    clusters.Add(tempCluster);//O(1)
-                    // set the referance to both points as the cluster number 
-                    indexer[p1] = cluster;//O(1)
-                    indexer[p2] = cluster;//O(1)
-                    cluster++;//O(1)
-                    numberOfClusters++;//O(1)
-                    unClusterd -= 2;//O(1)
+                    graph[MST[h].points[0]].Remove(MST[h].points[1]);//O(N)
+                    MEAN = MEAN * (STDcount + 1);
+                    MEAN = MEAN - MST[h].distance;
+                    MEAN = MEAN / STDcount;
+                    h++;
+                    STDcount--;
+                    for (int i = h + 1; i < r; i++)
+                        stdSUM_loop += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
+                    stdSUM_loop /= STDcount;
+                    stdSUM_loop = Math.Sqrt(stdSUM_loop);
+                    graph[MST[h].points[1]].Remove(MST[h].points[0]);//O(N)
                 }
+                if (STDcount == 0) break;
             }
-            clusteringTime.Stop();
-            overAllTime.Stop();
-            MessageBox.Show("the number of clusters " + k + " in time " + clusteringTime.ElapsedMilliseconds + " ms");
+            for (int f = 0; f < graph.Count; f++)//O(D)
+                if (partnersOfTheTree[f] == false)
+                {
+                    //Console.WriteLine(stdSUM + " MST STD");
+                    //Console.WriteLine("-------------------------------------------------------------");
+                    clusters.Add(new List<int>());//O(1)
+                    q.Enqueue(f);//O(1)
+                    while (q.Count != 0)
+                    {
+                        //for (int i = 1; i < MSTCOUNT; i++) stdSUM += Math.Pow((MST[i].distance - MEAN), 2);
+                        var tmpQ = q.Peek();
+                        for (int s = 0; s < graph[tmpQ].Count; s++)//O(N)
+                            if (partnersOfTheTree[graph[tmpQ][s]] == false)
+                                q.Enqueue(graph[tmpQ][s]);//O(1)
+                        partnersOfTheTree[tmpQ] = true;//O(1)
+                        clusters[cluster_counter].Add(q.Dequeue());//O(1)
+                        //double currentMean = MEAN;
+                        //int current_MSTCOUNT = MSTCOUNT;
+                    }
+                    cluster_counter++;
+                }
             return clusters;
         }
         public static List<RGBPixel> generatePallete(List<List<int>> clusters, List<RGBPixel> colorSet, ref int[,,] mapper)
