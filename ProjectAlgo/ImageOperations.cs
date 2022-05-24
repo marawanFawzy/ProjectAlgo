@@ -218,8 +218,9 @@ namespace ImageQuantization
                 dist = Math.Sqrt(red + green + blue);//O(1)
                 // adding the edge to the initial MST
                 MST.Add(new edge(dist, 0, k));//O(1)
-                graph[localLeast].Add(k);
-                graph[k].Add(localLeast);
+                //adding each point to other to create graph 
+                graph[localLeast].Add(k);//O(1)
+                graph[k].Add(localLeast);//O(1)
                 // checks if it is the minimmum edge to start from its end
                 if (dist < min)//O(1)
                 {
@@ -262,14 +263,16 @@ namespace ImageQuantization
                         //check if it is a better way to this vertix 
                         if (dist < tmp.distance)//O(1)
                         {
-                            graph[j].Remove(MST[j].points[0]);
-                            graph[MST[j].points[0]].Remove(j);
+                            // removing each point from each other lists 
+                            graph[j].Remove(MST[j].points[0]);//O(N)
+                            graph[MST[j].points[0]].Remove(j);//O(N)
                             //replace the distance 
                             MST[j].distance = dist;//O(1)
                             //replace the starting index 
                             MST[j].points[0] = localLeast;//O(1)
-                            graph[j].Add(MST[j].points[0]);
-                            graph[MST[j].points[0]].Add(j);
+                            // adding each point from the new edge to other's lists 
+                            graph[j].Add(MST[j].points[0]);//O(1)
+                            graph[MST[j].points[0]].Add(j);//O(1)
                         }
                         //check if it is the best edge in the tree to set the next start point
                         if (tmp.distance < min)//O(1)
@@ -285,7 +288,8 @@ namespace ImageQuantization
             }
             MST_SUM = 0;
             //calculating the MST SUM 
-            for (int i = 0; i < MST.Count; i++) MST_SUM = MST_SUM + MST[i].distance;//O(N)
+            for (int i = 0; i < MST.Count; i++) //O(N)
+                MST_SUM = MST_SUM + MST[i].distance;
             MSTTime.Stop();
             overAllTime.Stop();
             phase1Time = overAllTime.ElapsedMilliseconds;
@@ -305,53 +309,62 @@ namespace ImageQuantization
             Stopwatch clusterTime = new Stopwatch();
             clusterTime.Start();
             overAllTime.Restart();
-            int cluster_counter = 0;
-            List<List<int>> clusters = new List<List<int>>();
-            Queue<int> q = new Queue<int>();
-            bool[] partnersOfTheTree = new bool[numberOfDistinctColors];
+            int cluster_counter = 0;//O(1)
+            List<List<int>> clusters = new List<List<int>>();//O(1)
+            Queue<int> q = new Queue<int>();//O(1)
+            bool[] partnersOfTheTree = new bool[numberOfDistinctColors];//O(1)
             MST.Sort();//O(Nlog(N))
-            int MSTCOUNT = MST.Count() - 1;
-            double MEAN = MST_SUM / MSTCOUNT;
-            double stdSUM = 0;
-            int STDcount = MSTCOUNT - 1;
-            for (int i = 0; i < MSTCOUNT; i++) stdSUM += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
+            int MSTCOUNT = MST.Count() - 1;//O(1)
+            double MEAN = MST_SUM / MSTCOUNT;//O(1)
+            double stdSUM = 0;//O(1)
+            int STDcount = MSTCOUNT - 1;//O(1)
+            // calculate the standerd deveation  
+            for (int i = 0; i < MSTCOUNT; i++)//O(E) bouns loop 
+                stdSUM += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
             stdSUM /= STDcount;
             stdSUM = Math.Sqrt(stdSUM);
+            ////////////////////////////////////
             double stdSUM_loop = stdSUM;
             int h = 0;//O(1)
             int r = MSTCOUNT - 1;//O(1)
-            while (Math.Abs(stdSUM - stdSUM_loop) >= 0.0001 || h == 0)//O(K) 
+            while (Math.Abs(stdSUM - stdSUM_loop) >= 0.0001 || h == 0)//O(E) bouns loop // to check if stoping 
             {
                 stdSUM = stdSUM_loop;
                 stdSUM_loop = 0;
-                if (Math.Abs(MST[r].distance - MEAN) >= MST[h].distance - MEAN)
+                if (Math.Abs(MST[r].distance - MEAN) >= MST[h].distance - MEAN) // decide which makes more reduction 
                 {
+                    // breaking the edge 
                     graph[MST[r].points[0]].Remove(MST[r].points[1]);//O(N)
-                    r--;
+                    graph[MST[r].points[1]].Remove(MST[r].points[0]);//O(N)
+                    //calculate new mean 
                     MEAN = MEAN * (STDcount + 1);
-                    MEAN = MEAN - MST[r + 1].distance;
+                    MEAN = MEAN - MST[r].distance;
                     MEAN = MEAN / STDcount;
-                    for (int i = h; i < r - 1; i++)
+                    r--;// skipping this edge 
+                    //calculate new standerd deveation
+                    for (int i = h; i < r; i++)//O(E) bouns loop 
                         stdSUM_loop += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
                     stdSUM_loop /= STDcount;
                     stdSUM_loop = Math.Sqrt(stdSUM_loop);
-                    graph[MST[r].points[1]].Remove(MST[r].points[0]);//O(N)
                 }
                 else
                 {
+                    // breaking the edge 
                     graph[MST[h].points[0]].Remove(MST[h].points[1]);//O(N)
+                    graph[MST[h].points[1]].Remove(MST[h].points[0]);//O(N)
+                    //calculate new mean
                     MEAN = MEAN * (STDcount + 1);
                     MEAN = MEAN - MST[h].distance;
                     MEAN = MEAN / STDcount;
-                    h++;
-                    for (int i = h + 1; i < r; i++)
+                    h++; // skipping this edge 
+                    //calculate new standerd deveation
+                    for (int i = h; i < r; i++)//O(E) bouns loop 
                         stdSUM_loop += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
                     stdSUM_loop /= STDcount;
                     stdSUM_loop = Math.Sqrt(stdSUM_loop);
-                    graph[MST[h].points[1]].Remove(MST[h].points[0]);//O(N)
                 }
                 STDcount--;
-                if (STDcount == 0) break;
+                if (STDcount == 0) break; // handle error 
             }
             for (int i = 0; i < graph.Count; i++)//O(D)
                 if (partnersOfTheTree[i] == false)
@@ -359,16 +372,20 @@ namespace ImageQuantization
                     //Console.WriteLine(stdSUM + " MST STD");
                     //Console.WriteLine("-------------------------------------------------------------");
                     clusters.Add(new List<int>());//O(1)
+                    // adding start point 
                     q.Enqueue(i);//O(1)
-                    while (q.Count != 0)
+                    //checking if all connected subtree is computed 
+                    while (q.Count != 0)//O(N) 
                     {
                         //for (int i = 1; i < MSTCOUNT; i++) stdSUM += Math.Pow((MST[i].distance - MEAN), 2);
-                        var tmpQ = q.Peek();
+                        // temp to hold peek to reduce time then Dequeue 
+                        var tmpQ = q.Dequeue();
+                        // adding all direct connactions 
                         for (int j = 0; j < graph[tmpQ].Count; j++)//O(N)
-                            if (partnersOfTheTree[graph[tmpQ][j]] == false)
+                            if (partnersOfTheTree[graph[tmpQ][j]] == false)//O(1) //to avoid retake 
                                 q.Enqueue(graph[tmpQ][j]);//O(1)
-                        partnersOfTheTree[tmpQ] = true;//O(1)
-                        clusters[cluster_counter].Add(q.Dequeue());//O(1)
+                        partnersOfTheTree[tmpQ] = true;//O(1)// mark as taken 
+                        clusters[cluster_counter].Add(tmpQ);//O(1) // add to cluster 
                         //double currentMean = MEAN;
                         //int current_MSTCOUNT = MSTCOUNT;
                     }
