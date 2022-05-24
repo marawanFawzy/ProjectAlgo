@@ -218,7 +218,7 @@ namespace ImageQuantization
                 dist = Math.Sqrt(red + green + blue);//O(1)
                 // adding the edge to the initial MST
                 MST.Add(new edge(dist, 0, k));//O(1)
-                //adding each point to other to create graph 
+                //adding each point to other to create graph and edge  
                 graph[localLeast].Add(k);//O(1)
                 graph[k].Add(localLeast);//O(1)
                 // checks if it is the minimmum edge to start from its end
@@ -366,7 +366,8 @@ namespace ImageQuantization
                 STDcount--;
                 if (STDcount == 0) break; // handle error 
             }
-            for (int i = 0; i < graph.Count; i++)//O(D)
+            int count = graph.Count;
+            for (int i = 0; i < count; i++)//O(D)
                 if (partnersOfTheTree[i] == false)
                 {
                     //Console.WriteLine(stdSUM + " MST STD");
@@ -383,11 +384,11 @@ namespace ImageQuantization
                         // adding all direct connactions 
                         for (int j = 0; j < graph[tmpQ].Count; j++)//O(N)
                             if (partnersOfTheTree[graph[tmpQ][j]] == false)//O(1) //to avoid retake 
-                                q.Enqueue(graph[tmpQ][j]);//O(1)
-                        partnersOfTheTree[tmpQ] = true;//O(1)// mark as taken 
+                                q.Enqueue(graph[tmpQ][j]);//O(1)     
                         clusters[cluster_counter].Add(tmpQ);//O(1) // add to cluster 
                         //double currentMean = MEAN;
                         //int current_MSTCOUNT = MSTCOUNT;
+                        partnersOfTheTree[tmpQ] = true;//O(1)// mark as taken 
                     }
                     cluster_counter++;
                 }
