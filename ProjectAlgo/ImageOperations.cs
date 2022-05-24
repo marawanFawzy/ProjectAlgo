@@ -324,7 +324,7 @@ namespace ImageQuantization
             {
                 stdSUM = stdSUM_loop;
                 stdSUM_loop = 0;
-                if (((MST[r].distance - MEAN) * -1) >= MST[h].distance - MEAN)
+                if (Math.Abs(MST[r].distance - MEAN) >= MST[h].distance - MEAN)
                 {
                     graph[MST[r].points[0]].Remove(MST[r].points[1]);//O(N)
                     r--;
@@ -344,7 +344,6 @@ namespace ImageQuantization
                     MEAN = MEAN - MST[h].distance;
                     MEAN = MEAN / STDcount;
                     h++;
-                    
                     for (int i = h + 1; i < r; i++)
                         stdSUM_loop += (MST[i].distance - MEAN) * (MST[i].distance - MEAN);
                     stdSUM_loop /= STDcount;
@@ -354,20 +353,20 @@ namespace ImageQuantization
                 STDcount--;
                 if (STDcount == 0) break;
             }
-            for (int f = 0; f < graph.Count; f++)//O(D)
-                if (partnersOfTheTree[f] == false)
+            for (int i = 0; i < graph.Count; i++)//O(D)
+                if (partnersOfTheTree[i] == false)
                 {
                     //Console.WriteLine(stdSUM + " MST STD");
                     //Console.WriteLine("-------------------------------------------------------------");
                     clusters.Add(new List<int>());//O(1)
-                    q.Enqueue(f);//O(1)
+                    q.Enqueue(i);//O(1)
                     while (q.Count != 0)
                     {
                         //for (int i = 1; i < MSTCOUNT; i++) stdSUM += Math.Pow((MST[i].distance - MEAN), 2);
                         var tmpQ = q.Peek();
-                        for (int s = 0; s < graph[tmpQ].Count; s++)//O(N)
-                            if (partnersOfTheTree[graph[tmpQ][s]] == false)
-                                q.Enqueue(graph[tmpQ][s]);//O(1)
+                        for (int j = 0; j < graph[tmpQ].Count; j++)//O(N)
+                            if (partnersOfTheTree[graph[tmpQ][j]] == false)
+                                q.Enqueue(graph[tmpQ][j]);//O(1)
                         partnersOfTheTree[tmpQ] = true;//O(1)
                         clusters[cluster_counter].Add(q.Dequeue());//O(1)
                         //double currentMean = MEAN;
