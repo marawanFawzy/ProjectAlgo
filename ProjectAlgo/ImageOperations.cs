@@ -327,7 +327,7 @@ namespace ImageQuantization
             double stdSUM_loop = stdSUM;
             int h = 0;//O(1)
             int r = MSTCOUNT - 1;//O(1)
-            while (Math.Abs(stdSUM - stdSUM_loop) >= 0.0001 || h == 0)//O(E) bouns loop // to check if stopping 
+            while (Math.Abs(stdSUM - stdSUM_loop) >= 0.0001 || h == 0)//O(K) bouns loop // to check if reduction is minimized
             {
                 stdSUM = stdSUM_loop;
                 stdSUM_loop = 0;
