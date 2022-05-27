@@ -233,7 +233,7 @@ namespace ImageQuantization
             }
             k = 1;
             // looping from every vertix exept of 0 to the others 
-            while (k < numberOfDistinctColors)//O(N)
+            while (k < numberOfDistinctColors)//O(D)
             {
                 //reset the min for every vertix 
                 min = 99999;
@@ -245,7 +245,7 @@ namespace ImageQuantization
                 for (int j = 1; j < numberOfDistinctColors; j++)//O(D)
                 {
                     // exclude the optimal points if found 
-                    if (partnersOfTheTree[j] == false)//O(D)
+                    if (partnersOfTheTree[j] == false)//O(1)
                     {
                         // calculating the distance 
                         byte red1 = colorSet[localLeast].red;//O(1)
